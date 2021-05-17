@@ -1,5 +1,6 @@
 import "repl_iota"
 
+-- hmm, it compiles without #[unsafe] as well ...
 let unsafe_index 'a (xs : []a) (i: i64) : a = #[unsafe] xs[i]
 let map_wrapper 'a 'b (xs : []a) (f : a -> () -> b) : []b = map (\x -> f x ()) xs
 type sig_ 'a = a
