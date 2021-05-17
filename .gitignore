@@ -32,6 +32,10 @@ lia.cache
 nia.cache
 nlia.cache
 nra.cache
+CoqMakefile
+CoqMakefile.conf
+Makefile.coq
+Makefile.coq.conf
 
 ## extraction output
 extracted/*
