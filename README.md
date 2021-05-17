@@ -19,3 +19,5 @@ opam pin -j 4 add https://github.com/AU-COBRA/ConCert.git
 
 Coq will be installed as one of the dependencies.
 The process of building all the dependencies is quite time-consuming.
+
+After the process of building dependencies is finished, just run `make` in the project root.
