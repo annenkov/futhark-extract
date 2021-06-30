@@ -2,7 +2,7 @@
 
 A prototype implementation of code extraction from the Coq proof assistant targeting [Futhark](https://futhark-lang.org/)
 
-Extraction machinery is provided by [MetaCoq](https://github.com/MetaCoq/metacoq/) and [ConCert](https://github.com/AU-COBRA/ConCert)
+The extraction machinery is provided by [MetaCoq](https://github.com/MetaCoq/metacoq/) and [ConCert](https://github.com/AU-COBRA/ConCert)
 
 ## Requirements
 
