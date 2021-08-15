@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     container: aucobra/concert:988b37a
     steps:
-    - run: sudo chown -R coq:coq .
     - uses: actions/checkout@v2
 
     - name: Install Futhark
