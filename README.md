@@ -1,3 +1,5 @@
+![build status](https://github.com/annenkov/futhark-extract/actions/workflows/build.yaml/badge.svg)
+
 # Extracting Futhark code
 
 A prototype implementation of code extraction from the Coq proof assistant targeting [Futhark](https://futhark-lang.org/)
