@@ -33,4 +33,4 @@ process-extraction:
 	./process-extraction-examples.sh
 
 test-extraction: process-extraction
-	futhark test -C *
+	cd extracted/auto-generated && futhark test -C *
