@@ -3,3 +3,4 @@
 theories/FutharkPretty.v
 theories/FutharkExtract.v
 theories/FutharkExamples.v
+theories/MyFutharkExamples.v
