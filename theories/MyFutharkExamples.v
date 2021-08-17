@@ -300,6 +300,10 @@ Module MaximumSegmentSum.
     | (x, _, _, _) => x
     end.
 
+  Lemma max_justification:
+    forall x y : Z, x > y -> Z.max x y = x.
+  Proof. intros; lia. Qed.
+
   Definition mss_prelude :=
     <$
       sig_defs;
