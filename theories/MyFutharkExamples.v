@@ -207,9 +207,6 @@ Module MaximumSegmentSum.
     | _ /\ _ => destruct H as [C1 C2]; destruct_ands C1; destruct_ands C2
     | _ => idtac
     end.
-    (* match goal with *)
-    (* | H : _ /\ _ |- _ => destruct H *)
-    (* end. *)
 
   Ltac destruct_tuple x :=
     let x1 := fresh "e" in
@@ -226,7 +223,7 @@ Module MaximumSegmentSum.
 
   Ltac destruct_tuple_eqs :=
     repeat match goal with
-           | Eq : (_, _) = (_, _) |- _ => inversion_clear Eq
+           | Eq : (_, _) = (_, _) |- _ => inversion Eq; clear Eq
            end.
 
   Ltac split_tuple_eq_goal :=
@@ -234,32 +231,33 @@ Module MaximumSegmentSum.
            | |- (_, _) = (_, _) => f_equal
            end.
 
-  Definition X : Type :=
-    {x : Z * Z * Z * Z |
+  Definition P__X (x : Z * Z * Z * Z) :=
       forall x1 x2 x3 x4 : Z,
-        (x1, x2, x3, x4) = x -> (x1 >= x2 /\x1 >= x3 /\ x2 >= 0 /\ x3 >= 0 /\ x2 >= x4 /\ x3 >= x4)}.
+        x = (x1, x2, x3, x4) -> (x2 <= x1 /\ x3 <= x1 /\ 0 <= x2 /\ 0 <= x3 /\ x4 <= x2 /\ x4 <= x3).
+
+  Definition X : Type := {x : Z * Z * Z * Z | P__X x }.
 
   Ltac destruct_X x :=
-    let elm := fresh in
-    let cond := fresh in
-    destruct x as [elm cond];
+    let v := fresh "v" in
+    let pf := fresh "pf" in
+    destruct x as [v pf];
+    unfold P__X in pf;
     try match goal with
-        | var := proj1_sig (exist _ elm _) |- _ => simpl in var; subst var
+        | var := proj1_sig (exist _ v _) |- _ => simpl in var; subst var
         end;
-    destruct_tuple elm;
-    match type of cond with
-    | (forall _ _ _ _ : Z, (_, _, _, _) = (?z0, ?z1, ?z2, ?z3) -> _)
-      => let cond' := fresh in
-        specialize (cond z0 z1 z2 z3 (@eq_refl _ _)) as cond'; destruct_ands cond'
+    destruct_tuple v;
+    match type of pf with
+    | (forall _ _ _ _ : Z, (?z0, ?z1, ?z2, ?z3) = (_, _, _, _) -> _)
+      => let pf' := fresh in
+        specialize (pf z0 z1 z2 z3 (@eq_refl _ _)) as pf'; destruct_ands pf'
     end.
 
   Ltac destruct_Xs :=
     fold X in *;
-    repeat
-    let x := fresh in
-    match goal with
-    | [ x : X |- _ ] => destruct_X x
-    end.
+    repeat let x := fresh in
+           match goal with
+           | [ x : X |- _ ] => destruct_X x
+           end.
 
   Program Definition redOp (x y : X) : X :=
     let '(mssx, misx, mcsx, tsx) := proj1_sig x in
@@ -270,12 +268,11 @@ Module MaximumSegmentSum.
     , tsx + tsy
     ).
   Next Obligation.
-    intros; destruct_Xs; intros; destruct_tuple_eqs; lia.
+    intros; unfold P__X; destruct_Xs; intros; destruct_tuple_eqs; lia.
   Defined.
   Check redOp.
 
   Program Definition X__unit : X := (Z0, Z0, Z0, Z0).
-
   Next Obligation.
     simpl; inversion 1; lia.
   Defined.
@@ -299,7 +296,7 @@ Module MaximumSegmentSum.
     , Z.max x 0
     , x).
   Next Obligation.
-    simpl; intros; destruct_tuple_eqs; lia.
+    unfold P__X; simpl; intros; destruct_tuple_eqs; lia.
   Defined.
   Check mapOp.
 
