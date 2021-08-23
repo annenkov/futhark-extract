@@ -69,8 +69,79 @@ Definition TT_ctors :=
   ; ("true", "true")
   ; ("false", "false")].
 
-Open Scope string.
+Module Utils.
 
+  Open Scope list_scope.
+
+  (* Notation "x =s y" := (proj1_sig x = proj1_sig y) (at level 70, no associativity). *)
+
+  Class IsMonoid__sig {A : Type} {P : A -> Prop} (op : sig P -> sig P -> sig P) (e : sig P) : Prop :=
+    { munit_left__sig  : forall m, proj1_sig (op e m) = proj1_sig m;
+      munit_right__sig : forall m, proj1_sig (op m e) = proj1_sig m;
+      massoc__sig      : forall m1 m2 m3, proj1_sig (op m1 (op m2 m3)) = proj1_sig (op (op m1 m2) m3);
+      mirlv_left__sig  : forall (m : sig P) (a : A) (p1 p2 : P a), proj1_sig (op (exist P a p1) m) = proj1_sig (op (exist P a p2) m);
+      mirlv_right__sig : forall (m : sig P) (a : A) (p1 p2 : P a), proj1_sig (op m (exist P a p1)) = proj1_sig (op m (exist P a p2))
+    }.
+
+  Definition reduce__sig {A : Type} {P : A -> Prop} (op : sig P -> sig P -> sig P) (e : sig P) `{IsMonoid__sig A P op e} (xs : list (sig P)) :=
+    fold_right op e xs.
+
+  Theorem reduce_prop__sig:
+    forall (A : Type) (P : A -> Prop) (op : sig P -> sig P -> sig P) (ne : sig P) (isM : IsMonoid__sig op ne) (l1 l2 : list (sig P)),
+      proj1_sig (reduce__sig op ne (l1 ++ l2)) = proj1_sig (op (reduce__sig op ne l1) (reduce__sig op ne l2))
+      /\ proj1_sig (reduce__sig op ne []) = proj1_sig ne.
+  Proof.
+    intros; split; auto;
+      match goal with
+      | |- context[?list1 ++ ?list2] => induction list1 as [|? ? IH]
+      end;
+      simpl.
+    * rewrite munit_left__sig; trivial.
+    * rewrite <- massoc__sig
+      ; repeat match goal with
+               | |- context[reduce__sig ?op ?ne ?list]
+                 => let res := fresh "red" in
+                   remember (reduce__sig op ne list) as res
+               end
+      ; match goal with
+        | IH : proj1_sig ?r1 = proj1_sig ?r2 |- context[op _ ?r2]
+          => let el1 := fresh "el" in
+            let pf1 := fresh "pf" in
+            let el2 := fresh "el" in
+            let pf2 := fresh "pf" in
+            destruct r1 as [el1 pf1]
+            ; destruct r2 as [el2 pf2]
+            ; simpl in IH; subst el1
+            ; rewrite (mirlv_right__sig _ _ pf1 pf2)
+        end
+      ; reflexivity.
+  Qed.
+
+  Class IsMonoid (M : Type) (op : M -> M -> M) (e : M) : Prop :=
+    { munit_left : forall m, (op e m) = m;
+      munit_right : forall m, (op m e) = m;
+      massoc : forall m1 m2 m3, op m1 (op m2 m3) = op (op m1 m2) m3
+    }.
+
+  Definition reduce {A : Type} (op : A -> A -> A) (e : A) `{IsMonoid A op e} (xs : list A) :=
+    fold_right op e xs.
+
+  Theorem reduce_prop:
+    forall (A : Type) (op : A -> A -> A) (ne : A) (isM : IsMonoid A op ne) (l1 l2 : list A),
+      reduce op ne (l1 ++ l2) = op (reduce op ne l1) (reduce op ne l2) /\ reduce op ne [] = ne.
+  Proof.
+    intros; split; auto;
+      match goal with
+      | |- context[?list1 ++ ?list2] => induction list1 as [|? ? IH]
+      end;
+      simpl.
+    * rewrite munit_left; trivial.
+    * rewrite IH; rewrite massoc; trivial.
+  Qed.
+
+End Utils.
+
+Open Scope string.
 
 Module Tuples.
   (** Example of how tuples of length greater than two are exported
@@ -127,176 +198,113 @@ Module MaximumSegmentSum.
       x
   *)
 
-
-  Fixpoint map {T T' : Type} (f : T -> T') (arr : list T) : list T' :=
-    match arr with
-    | [] => []
-    | x :: xs => f x :: map f xs
-    end.
-
-  Definition assoc_fun {T : Type} (eq_cond : T -> T -> Prop) (ne : T) (f : T -> T -> T) : Prop :=
-    forall x y z : T,
-      eq_cond (f x (f y z)) (f (f x y) z)
-      /\ eq_cond (f x ne) x
-      /\ eq_cond (f ne x) x.
-
-  Fixpoint reduce
-           {T : Type}
-           {eq_cond : T -> T -> Prop}
-           (ne : T)
-           (f : T -> T -> T | assoc_fun eq_cond ne f)
-           (ar : list T)
-  : T :=
-    match ar with
-    | [] => ne
-    | x :: xs => proj1_sig f x (reduce ne f xs)
-    end.
-
   Open Scope Z.
 
-  Definition Dom : Type :=
+  Ltac destruct_ands H :=
+    let C1 := fresh "C" in
+    let C2 := fresh "C" in
+    match type of H with
+    | _ /\ _ => destruct H as [C1 C2]; destruct_ands C1; destruct_ands C2
+    | _ => idtac
+    end.
+    (* match goal with *)
+    (* | H : _ /\ _ |- _ => destruct H *)
+    (* end. *)
+
+  Ltac destruct_tuple x :=
+    let x1 := fresh "e" in
+    let x2 := fresh "e" in
+    match type of x with
+    | (_ * _)%type  => destruct x as [x1 x2]; destruct_tuple x1; destruct_tuple x2
+    | _ => idtac
+    end.
+
+  Ltac destruct_tuples :=
+    repeat match goal with
+    | t : (_ * _)%type |- _ => destruct_tuple t
+    end.
+
+  Ltac destruct_tuple_eqs :=
+    repeat match goal with
+           | Eq : (_, _) = (_, _) |- _ => inversion_clear Eq
+           end.
+
+  Ltac split_tuple_eq_goal :=
+    repeat match goal with
+           | |- (_, _) = (_, _) => f_equal
+           end.
+
+  Definition X : Type :=
     {x : Z * Z * Z * Z |
       forall x1 x2 x3 x4 : Z,
         (x1, x2, x3, x4) = x -> (x1 >= x2 /\x1 >= x3 /\ x2 >= 0 /\ x3 >= 0 /\ x2 >= x4 /\ x3 >= x4)}.
 
-  Ltac unfold_Dom :=
-    repeat (match goal with
-            | [ x : Dom |- _ ] => destruct x as [[[[? ?] ?] ?] ?]
-            end).
-
-  Program Definition DomUnit : Dom := (Z0, Z0, Z0, Z0).
-  Next Obligation.
-    intros x1 x2 x3 x4 H; inversion H; lia.
-  Defined.
-  Check DomUnit.
-
-  Ltac compare_to_inequality :=
-    repeat (match goal with
-            | [ H : _ ?= _ = Eq |- _ ] => apply Z.compare_eq in H
-            | [ H : ?a ?= ?b = Gt |- _ ] => fold (Z.gt a b) in H
-            | [ H : ?a ?= ?b = Lt |- _ ] => fold (Z.lt a b) in H
-            end).
-
-  Definition eq_Dom (x : Dom) (y : Dom) : Prop :=
-    proj1_sig x = proj1_sig y.
-
-  Lemma proj1_sig_eq:
-    forall x y : Dom, x = y -> proj1_sig x = proj1_sig y.
-  Proof.
-    intros; repeat (match goal with
-                    | a : Dom |- _ => destruct a
-                    end);
-    simpl; match goal with
-    | H : ?a = ?b |- _ => inversion H; trivial
+  Ltac destruct_X x :=
+    let elm := fresh in
+    let cond := fresh in
+    destruct x as [elm cond];
+    try match goal with
+        | var := proj1_sig (exist _ elm _) |- _ => simpl in var; subst var
+        end;
+    destruct_tuple elm;
+    match type of cond with
+    | (forall _ _ _ _ : Z, (_, _, _, _) = (?z0, ?z1, ?z2, ?z3) -> _)
+      => let cond' := fresh in
+        specialize (cond z0 z1 z2 z3 (@eq_refl _ _)) as cond'; destruct_ands cond'
     end.
-  Qed.
 
-  Lemma max_add_l:
-    forall k n m : Z, k + Z.max n m = Z.max (k + n) (k + m).
-  Proof.
-    intros; unfold Z.max; rewrite Z.add_compare_mono_l;
-        match goal with
-        | |- context[?a ?= ?b] => destruct (a ?= b) eqn:?; trivial
-        end.
-  Qed.
-
-  Lemma max_add_r:
-    forall k n m : Z, Z.max n m + k = Z.max (n + k) (m + k).
-  Proof.
-    intros k n m; repeat rewrite (Z.add_comm _ k); apply max_add_l.
-  Qed.
-
-  Lemma max_elim:
-    forall a b c : Z, b = c -> Z.max a b = Z.max a c.
-  Proof.
-    destruct 1; trivial.
-  Qed.
-
-  Ltac max_equality :=
-    repeat rewrite <- Z.max_assoc;
+  Ltac destruct_Xs :=
+    fold X in *;
+    repeat
+    let x := fresh in
     match goal with
-    | |- ?a = ?a => trivial
-    | |- Z.max ?a _ = Z.max ?a _ => apply max_elim; max_equality
-    | |- Z.max ?a _ = Z.max ?b _ => rewrite (Z.max_comm a); max_equality
+    | [ x : X |- _ ] => destruct_X x
     end.
 
-  Ltac add_max_equality :=
-    repeat rewrite max_add_l;
-    repeat rewrite max_add_r;
-    repeat rewrite Z.add_assoc;
-    max_equality.
-
-  Program Definition redOp : { f : Dom -> Dom -> Dom | assoc_fun eq_Dom DomUnit f } :=
-    fun (x y : Dom) =>
-      let '(mssx, misx, mcsx, tsx) := proj1_sig x in
-      let '(mssy, misy, mcsy, tsy) := proj1_sig y in
-        ( Z.max mssx (Z.max mssy (mcsx + misy))
-        , Z.max misx (tsx + misy)
-        , Z.max mcsy (mcsx + tsy)
-        , tsx + tsy).
+  Program Definition redOp (x y : X) : X :=
+    let '(mssx, misx, mcsx, tsx) := proj1_sig x in
+    let '(mssy, misy, mcsy, tsy) := proj1_sig y in
+    ( Z.max mssx (Z.max mssy (mcsx + misy))
+    , Z.max misx (tsx + misy)
+    , Z.max mcsy (mcsx + tsy)
+    , tsx + tsy
+    ).
   Next Obligation.
-    intros; unfold_Dom;
-      intros ? ? ? ? H; inversion H.
-        repeat (match goal with
-                | [H : (_, _, _, _) = ?a, I : forall _ _ _ _ : Z, (_, _, _, _) = ?a -> _ |- _]
-                  (* Apply sub-type restrictions to tuples *)
-                  => apply I in H
-                end); lia.
-  Defined.
-  Next Obligation.
-    simpl;
-      match goal with
-      | |- assoc_fun _ _ ?F => remember F as f
-      end;
-      unfold assoc_fun;
-      intros;
-      repeat split;
-      repeat (match goal with
-      | f : Dom -> Dom -> Dom |- eq_Dom (?f ?a (?f ?b ?c)) (?f (?f ?a ?b) ?c)
-        => remember (f a b) as fab;
-          remember (f fab c) as ffabc;
-          remember (f b c) as fbc;
-          remember (f a fbc) as fafbc
-      | f : Dom -> Dom -> Dom |- eq_Dom (?f ?v ?w) _
-        => remember (f v w) as fvw
-      end);
-      unfold_Dom;
-      unfold eq_Dom;
-      simpl in *;
-      repeat f_equal;
-      repeat (match goal with
-              | [ f : Dom -> Dom -> Dom, f_def : ?f = _, Eq : _ = ?f _ _ |- _ ]
-                => apply proj1_sig_eq in Eq; rewrite f_def in Eq; simpl in Eq; inversion Eq
-              end);
-      repeat (match goal with
-              | H : forall _ _ _ _ : Z, (_, _, _, _) = (?a, ?b, ?c, ?d) -> _ |- _
-                => specialize (H a b c d (@eq_refl _ _)) as [? [? [? [? [? ?]]]]]
-              end);
-      try add_max_equality;
-    repeat rewrite (Z.add_comm _ 0); simpl;
-    repeat match goal with
-    | Ineq : ?a >= ?b |- context[Z.max ?a ?b] => rewrite (Zmax_left a b Ineq)
-    | Ineq : ?a >= ?b |- context[Z.max ?b ?a] => rewrite (Z.max_comm b a); rewrite (Zmax_left a b Ineq)
-    end; trivial. lia.
+    intros; destruct_Xs; intros; destruct_tuple_eqs; lia.
   Defined.
   Check redOp.
 
-  Program Definition mapOp (x : Z) : Dom :=
+  Program Definition X__unit : X := (Z0, Z0, Z0, Z0).
+
+  Next Obligation.
+    simpl; inversion 1; lia.
+  Defined.
+  Check X__unit.
+
+  #[refine]
+  Instance X__monoid : @Utils.IsMonoid__sig (Z * Z * Z * Z) _ redOp X__unit :=
+    {| Utils.munit_left__sig  := _;
+       Utils.munit_right__sig := _;
+       Utils.massoc__sig      := _;
+       Utils.mirlv_left__sig  := _;
+       Utils.mirlv_right__sig := _
+    |}.
+  all: intros; destruct_tuples; destruct_Xs; unfold redOp; simpl; split_tuple_eq_goal; lia.
+  Defined.
+  Check X__monoid.
+
+  Program Definition mapOp (x : Z) : X :=
     ( Z.max x 0
     , Z.max x 0
     , Z.max x 0
     , x).
   Next Obligation.
-    intros; unfold Z.max; destruct (x ?= 0) as [] eqn:?; compare_to_inequality; intros;
-      match goal with
-      | H : (_, _, _, _) = (_, _, _, _) |- _ => inversion H
-      end;
-      lia.
+    simpl; intros; destruct_tuple_eqs; lia.
   Defined.
   Check mapOp.
 
   Definition mss (xs : list Z) : Z :=
-    match proj1_sig (reduce DomUnit redOp (map mapOp xs)) with
+    match proj1_sig (Utils.reduce__sig redOp X__unit (map mapOp xs)) with
     | (x, _, _, _) => x
     end.
 
@@ -312,7 +320,7 @@ Module MaximumSegmentSum.
     $>.
 
   Definition TT_extra :=
-    [ remap <%% @reduce %%> "reduce"
+    [ remap <%% @Utils.reduce %%> "reduce"
     ; remap <%% @map %%> "map"
     ; remap <%% @Z.max %%> "max"
     ].
