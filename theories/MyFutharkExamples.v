@@ -11,6 +11,7 @@ From Coq Require Import List.
 From Coq Require Import Arith.
 From Coq Require Import Floats.
 From Coq Require Import Lia.
+From Coq Require Import Logic.Eqdep_dec.
 
 From MetaCoq.Template Require Import MCString.
 From MetaCoq.Template Require Import MCList.
@@ -200,6 +201,17 @@ Module MaximumSegmentSum.
 
   Open Scope Z.
 
+  Definition max (x y : Z) : Z :=
+    if x >? y then x else y.
+
+  Lemma max_equiv:
+    forall x y : Z, max x y = Z.max x y.
+  Proof.
+    intros x y; unfold max; unfold Z.max; unfold Z.gtb;
+      destruct (x ?= y) eqn:H; try apply Z.compare_eq_iff in H;
+      subst; reflexivity.
+    Qed.
+
   Ltac destruct_ands H :=
     let C1 := fresh "C" in
     let C2 := fresh "C" in
@@ -231,89 +243,167 @@ Module MaximumSegmentSum.
            | |- (_, _) = (_, _) => f_equal
            end.
 
-  Definition P__X (x : Z * Z * Z * Z) :=
-      forall x1 x2 x3 x4 : Z,
-        x = (x1, x2, x3, x4) -> (x2 <= x1 /\ x3 <= x1 /\ 0 <= x2 /\ 0 <= x3 /\ x4 <= x2 /\ x4 <= x3).
+  Definition X__cond (x : Z * Z * Z * Z) : bool :=
+    let '(x1, x2, x3, x4) := x in
+    (x2 <=? x1) && (x3 <=? x1) && (0 <=? x2) && (0 <=? x3) && (x4 <=? x2) && (x4 <=? x3).
+
+  Definition P__X (x : Z * Z * Z * Z) : Prop := X__cond x = true.
+
+  Ltac destruct_bool B :=
+    match type of B with
+    | true = _    => apply eq_sym in B; destruct_bool B
+    | false = _   => apply eq_sym in B; destruct_bool B
+    | ?B0 = true  => let B1 := fresh "B" in
+                    let B2 := fresh "B" in
+                    match B0 with
+                    | _ && _ => apply andb_true_iff in B; destruct B as [B1 B2]
+                    | _ || _  => apply orb_true_iff  in B; destruct B as [B1 | B2]
+                    | negb _ => apply negb_true_iff in B
+                    | _ => fail
+                    end;
+                    try destruct_bool B1;
+                    try destruct_bool B2
+    | ?B0 = false => let B1 := fresh "B" in
+                    let B2 := fresh "B" in
+                    match B0 with
+                    | _ && _ => apply andb_false_iff in B; destruct B as [B1 | B2]
+                    | _ || _  => apply orb_false_iff  in B; destruct B as [B1 B2]
+                    | negb _ => apply negb_false_iff in B
+                    | _ => fail
+                    end;
+                    try destruct_bool B1;
+                    try destruct_bool B2
+    end.
+
+  Ltac bool_const_right :=
+    repeat match goal with
+           | B : true  = _  |- _ => apply eq_sym in B
+           | |-   true  = _      => apply eq_sym
+           | B : false = _ |- _  => apply eq_sym in B
+           | |-   false = _      => apply eq_sym
+           end.
+
+  Ltac convert_ineqb_to_ineq :=
+    bool_const_right;
+    repeat match goal with
+           | B : (_ =?  _) = true |- _ => apply Z.eqb_eq  in B
+           | B : (_ <?  _) = true |- _ => apply Z.ltb_lt  in B
+           | B : (_ <=? _) = true |- _ => apply Z.leb_le  in B
+           | B : (_ >?  _) = true |- _ => apply Z.gtb_ltb in B
+           | B : (_ >=? _) = true |- _ => apply Z.geb_leb in B
+           end.
+
+  Ltac split_X_cond_goal :=
+    repeat (apply andb_true_iff; split); apply Z.leb_le.
+
+  Lemma X_cond_equiv:
+    forall x : Z * Z * Z * Z, P__X x <-> let '(x1, x2, x3, x4) := x in
+                    x2 <= x1 /\ x3 <= x1 /\ 0 <= x2 /\ 0 <= x3 /\ x4 <= x2 /\ x4 <= x3.
+  Proof.
+    intros; split; destruct_tuples; unfold P__X; unfold X__cond.
+    * intros H; destruct_bool H; convert_ineqb_to_ineq; lia.
+    * intros; split_X_cond_goal; lia.
+  Qed.
 
   Definition X : Type := {x : Z * Z * Z * Z | P__X x }.
+
+  Lemma X_proof_irrellevance:
+    forall x y : X, proj1_sig x = proj1_sig y <-> x = y.
+  Proof.
+    split; intros;
+      match goal with
+      | x : X, y: X |- _ => destruct x; destruct y
+      end;
+      simpl in *;
+      match goal with
+      | |- exist _ _ _ = exist _ _ _ => subst; f_equal; apply (UIP_dec bool_dec)
+      | H : exist _ _ _ = exist _ _ _ |- _ => inversion H; reflexivity
+      end.
+  Qed.
 
   Ltac destruct_X x :=
     let v := fresh "v" in
     let pf := fresh "pf" in
     destruct x as [v pf];
     unfold P__X in pf;
+    (* unfold X__cond in pf; *)
     try match goal with
         | var := proj1_sig (exist _ v _) |- _ => simpl in var; subst var
         end;
     destruct_tuple v;
-    match type of pf with
-    | (forall _ _ _ _ : Z, (?z0, ?z1, ?z2, ?z3) = (_, _, _, _) -> _)
-      => let pf' := fresh in
-        specialize (pf z0 z1 z2 z3 (@eq_refl _ _)) as pf'; destruct_ands pf'
-    end.
+    simpl in *;
+    try destruct_bool pf.
 
   Ltac destruct_Xs :=
     fold X in *;
+    unfold P__X in *;
+    unfold X__cond in *;
     repeat let x := fresh in
            match goal with
            | [ x : X |- _ ] => destruct_X x
-           end.
+           end;
+    convert_ineqb_to_ineq.
 
   Program Definition redOp (x y : X) : X :=
     let '(mssx, misx, mcsx, tsx) := proj1_sig x in
     let '(mssy, misy, mcsy, tsy) := proj1_sig y in
-    ( Z.max mssx (Z.max mssy (mcsx + misy))
-    , Z.max misx (tsx + misy)
-    , Z.max mcsy (mcsx + tsy)
+    ( max mssx (max mssy (mcsx + misy))
+    , max misx (tsx + misy)
+    , max mcsy (mcsx + tsy)
     , tsx + tsy
     ).
   Next Obligation.
-    intros; unfold P__X; destruct_Xs; intros; destruct_tuple_eqs; lia.
+    intros;
+      repeat rewrite max_equiv;
+      destruct_Xs;
+      destruct_tuple_eqs;
+      subst;
+      split_X_cond_goal; lia.
   Defined.
   Check redOp.
 
   Program Definition X__unit : X := (Z0, Z0, Z0, Z0).
   Next Obligation.
-    simpl; inversion 1; lia.
+    simpl; unfold P__X; unfold X__cond; split_X_cond_goal; reflexivity.
   Defined.
   Check X__unit.
 
   #[refine]
-  Instance X__monoid : @Utils.IsMonoid__sig (Z * Z * Z * Z) _ redOp X__unit :=
-    {| Utils.munit_left__sig  := _;
-       Utils.munit_right__sig := _;
-       Utils.massoc__sig      := _;
-       Utils.mirlv_left__sig  := _;
-       Utils.mirlv_right__sig := _
+  Instance X__monoid : @Utils.IsMonoid X redOp X__unit :=
+    {| Utils.munit_left  := _;
+       Utils.munit_right := _;
+       Utils.massoc      := _
     |}.
-  all: intros; destruct_tuples; destruct_Xs; unfold redOp; simpl; split_tuple_eq_goal; lia.
+  all: intros; apply X_proof_irrellevance; destruct_Xs; repeat rewrite max_equiv.
+  * split_tuple_eq_goal; lia.
+  * split_tuple_eq_goal; lia.
+  * destruct_Xs. split_tuple_eq_goal; lia.
+  (* all: intros; destruct_tuples; destruct_Xs; unfold redOp; simpl; split_tuple_eq_goal; lia. *)
   Defined.
   Check X__monoid.
 
   Program Definition mapOp (x : Z) : X :=
-    ( Z.max x 0
-    , Z.max x 0
-    , Z.max x 0
+    ( max x 0
+    , max x 0
+    , max x 0
     , x).
   Next Obligation.
-    unfold P__X; simpl; intros; destruct_tuple_eqs; lia.
+    unfold P__X; unfold X__cond;
+      intros; split_X_cond_goal;
+        repeat rewrite max_equiv;
+        convert_ineqb_to_ineq; lia.
   Defined.
   Check mapOp.
 
   Definition mss (xs : list Z) : Z :=
-    match proj1_sig (Utils.reduce__sig redOp X__unit (map mapOp xs)) with
+    match proj1_sig (Utils.reduce redOp X__unit (map mapOp xs)) with
     | (x, _, _, _) => x
     end.
-
-  Lemma max_justification:
-    forall x y : Z, x > y -> Z.max x y = x.
-  Proof. intros; lia. Qed.
 
   Definition mss_prelude :=
     <$
       sig_defs;
-      i64_ops;
-      "let max(x: i32, y: i32): i32 = if x > y then x else y"
+      i64_ops
     $>.
 
   Definition TT_extra :=
