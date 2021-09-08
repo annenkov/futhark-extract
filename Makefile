@@ -28,3 +28,9 @@ force: ;
 
 # Do not forward these files
 Makefile _CoqProject: ;
+
+process-extraction:
+	./process-extraction-examples.sh
+
+test-extraction: process-extraction
+	cd extracted/auto-generated && futhark test -C *

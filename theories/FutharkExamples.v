@@ -11,20 +11,35 @@ From Coq Require Import List.
 From Coq Require Import Arith.
 From Coq Require Import Floats.
 
-From MetaCoq.Template Require Import MCString.
-From MetaCoq.Template Require Import MCList.
+From MetaCoq.Template Require Import All.
+From MetaCoq.Template Require Import monad_utils.
 
-From stdpp Require Import base.
-(* From MetaCoq.Template Require Import Kernames. *)
-(* From MetaCoq.Template Require Import Loader. *)
-(* From MetaCoq.Template Require Import TemplateMonad. *)
-(* From MetaCoq Require Import monad_utils. *)
-(* From MetaCoq Require Import utils. *)
+Import MonadNotation.
+From stdpp Require  base.
 
 Import ListNotations.
 
+
 Open Scope string.
 Open Scope pair_scope.
+
+(** Extracts [program] to Futhark, adds a new definition [extracted_name]
+    with the extracted program and also prints the program.
+    The definition with the extracted program can be used later on
+    to redirect to a file, for example. *)
+Definition extract_and_print {A}
+           (extracted_name : string)
+           (prelude : string)
+           (translate_constants : list (BasicAst.kername * string))
+           (translate_ctors : list (string * string))
+           (tests : option FutharkTest)
+           (program : A) :=
+  res <- futhark_extraction "" prelude translate_constants translate_ctors tests program;;
+  match res with
+  | inl s => tmDefinition extracted_name s;;
+             tmMsg s
+  | inr s => tmFail s
+  end.
 
 Definition float_zero := S754_zero false.
 
@@ -90,11 +105,14 @@ Module PatternMatching.
     | No i1, No i2  => i1 + i2
     end.
 
-  MetaCoq Run (futhark_extraction "" i64_ops TT TT_ctors
-                                  None
-                                  add_dec).
+  MetaCoq Run (extract_and_print
+                 "add_dec_futhark"
+                 i64_ops
+                 TT
+                 TT_ctors
+                 None
+                 add_dec).
 End PatternMatching.
-
 
 
 Module Sum.
@@ -113,7 +131,7 @@ Module Sum.
      ; FTinput := string_of_list (fun n => string_of_nat n ++ "i64") test_input
      ; FToutput := string_of_nat test_output ++ "i64" |}.
 
-  MetaCoq Run (futhark_extraction "" i64_ops TT TT_ctors
+  MetaCoq Run (extract_and_print "sum_futhark" i64_ops TT TT_ctors
                                   (Some futhark_sum_test)
                                   sum).
 
@@ -140,7 +158,7 @@ Module Average.
      ; FTinput := "[10.5f64,20.5f64]" (* we can't print float literals currently *)
      ; FToutput := "15.5f64" |}.
 
-  MetaCoq Run (futhark_extraction "" f64_ops TT TT_ctors
+  MetaCoq Run (extract_and_print "average_futhark" f64_ops TT TT_ctors
                                   (Some futhark_average_test)
                                   average).
 
@@ -183,7 +201,7 @@ Module Monoid.
 
   (** The witness of the instance [Z_add_monoid] is erased, because it's a proposition.
    So, we are left with an ordinary Futhark function *)
-  MetaCoq Run (futhark_extraction "" i64_ops (TT ++ TT_extra) TT_ctors
+  MetaCoq Run (extract_and_print "sum_futhark" i64_ops (TT ++ TT_extra) TT_ctors
                                   None
                                   sum).
   (* Geneterates the following function: *)
@@ -236,9 +254,9 @@ Module DotProduct.
 
 
   (** Unfortunately, Futhark test syntax doesn't support tuples, so we don't generate the test *)
-  MetaCoq Run (futhark_extraction "" i64_ops (TT ++ TT_extra) TT_ctors
-                                  None
-                                  dotprod_list_of_pairs).
+  MetaCoq Run (extract_and_print "dotprod_list_of_pairs_futhark" i64_ops (TT ++ TT_extra) TT_ctors
+                                 None
+                                 dotprod_list_of_pairs).
 
 End DotProduct.
 
@@ -277,18 +295,17 @@ Module RefinementTypes.
   Program Definition zip_self {n} (xs : {l : list Z | length l = n}) : {l | length l = n } := zip xs xs.
 
   Definition TT_extra :=
-    [
-      remap <%% @zip %%> "zip"
+    [ remap <%% @zip %%> "zip"
     ; remap <%% @concat %%> "concat"
     ].
 
   (** The statement below produces "almost compilable" code :)
      It requires some type coercions to be inserted in order to compile *)
-  MetaCoq Run (futhark_extraction "" sig_defs
-                                  (TT ++ TT_extra)
-                                  TT_ctors
-                                  None
-                                  zip_concat_swap).
+  MetaCoq Run (extract_and_print "zip_concat_swap_futhark" sig_defs
+                                 (TT ++ TT_extra)
+                                 TT_ctors
+                                 None
+                                 zip_concat_swap).
 End RefinementTypes.
 
 Module Indexing.
@@ -361,7 +378,7 @@ Module Indexing.
     cbn;intros n xs i H.
     destruct xs as [l Hsize];cbn in *. subst.
     apply @repl_iota_aux_lt with (n:=0);auto.
-    Qed.
+  Qed.
 
   (** The implementation is a bit tricky, because while we map through [idxs]
       we need to know that each element is actually coming from [idxs].
@@ -380,15 +397,14 @@ Module Indexing.
   Qed.
 
   Definition prelude_extra :=
-    <$ "import ""repl_iota"""; (* we treat [repl_iota] as a library function *)
-        "";
-        "let unsafe_index 'a (xs : []a) (i: i64) : a = #[unsafe] xs[i]";
+     "import ""../lib/repl_iota""" ++ nl ++(* we treat [repl_iota] as a library function *)
+      "" ++ nl ++
+      "let unsafe_index 'a (xs : []a) (i: i64) : a = #[unsafe] xs[i]" ++ nl ++
         (* we also need a wrapper around our [map_In] function, since it's signature differs from the Futhark's [map] *)
-        "let map_wrapper 'a 'b (xs : []a) (f : a -> () -> b) : []b = map (\x -> f x ()) xs" $>.
+      "let map_wrapper 'a 'b (xs : []a) (f : a -> () -> b) : []b = map (\x -> f x ()) xs".
 
   Definition TT_extra :=
-    [
-      remap <%% @Utils.map_In %%> "map_wrapper"
+    [ remap <%% @Utils.map_In %%> "map_wrapper"
     ; remap <%% @repl_iota_rt %%> "repl_iota"
     ; remap <%% @safe_index %%> "unsafe_index"
     ].
@@ -398,9 +414,36 @@ Module Indexing.
      and curretnly we don't generate explicit sizes for the array types.
      However, it could be called from a wrapper that ensures the required
      preconditions hold. *)
-  MetaCoq Run (futhark_extraction "" <$ prelude_extra; sig_defs $>
-                                  (TT ++ TT_extra)
-                                  TT_ctors
-                                  None
-                                  segm_replicate).
+  MetaCoq Run (extract_and_print "segm_replicate_futhark"
+                                     (prelude_extra ++ nl ++ sig_defs)
+                                     (TT ++ TT_extra)
+                                     TT_ctors
+                                     None
+                                     segm_replicate).
 End Indexing.
+
+(** Here, we redirect the previuosly extracted programs to files *)
+(** This part cannot be evaluated in the interactive mode, because one has to provide fixed paths. Therefore, we use path from the project's root, so it works when building the project using [makefile] *)
+
+(* NOTE: we use [MetaCoq Run (tmMsg ...)] instead of [Print], because
+   [Print] adds some extra stuff, which we don't need *)
+
+Redirect "./extracted/auto-generated/pattern_matching.fut"
+         MetaCoq Run (tmMsg PatternMatching.add_dec_futhark).
+
+Redirect "./extracted/auto-generated/average.fut"
+         MetaCoq Run (tmMsg Average.average_futhark).
+
+Redirect "./extracted/auto-generated/monoid.fut"
+         MetaCoq Run (tmMsg Monoid.sum_futhark).
+
+Redirect "./extracted/auto-generated/dot_product.fut"
+         MetaCoq Run (tmMsg DotProduct.dotprod_list_of_pairs_futhark).
+
+(* NOTE: this example is currently does not compile without some manual editing.
+   It requres a type coercion, which we cannot insert automatically yet. *)
+(* Redirect "./extracted/auto-generated/refinement_types.fut" *)
+(*          MetaCoq Run (tmMsg RefinementTypes.zip_concat_swap_futhark). *)
+
+Redirect "./extracted/auto-generated/segm_replicate.fut"
+         MetaCoq Run (tmMsg Indexing.segm_replicate_futhark).

@@ -118,7 +118,7 @@ Definition futhark_extraction {A : Type}
            (TT_defs : list (kername *  string))
            (TT_ctors : MyEnv.env string)
            (test : option FutharkTest)
-           (def : A) :=
+           (def : A) : TemplateMonad (string + string) :=
   '(Σ,_) <- tmQuoteRecTransp def false ;;
   nm <- extract_def_name def;;
   let TT_defs := TT_defs in
@@ -128,6 +128,6 @@ Definition futhark_extraction {A : Type}
   p <- tmEval lazy
              (printFutharkDefs prefix Σ TT ignore test prelude nm []) ;;
   match p with
-  | inl s => tmMsg s
-  | inr s => tmFail s
+  | inl s => ret (inl s)
+  | inr s => ret (inr s)
   end.
