@@ -683,7 +683,9 @@ Definition u32_ops :=
   "let multU32 (i : u32) (j : u32) = i * j" ;
   "let eqU32 (a : u32 ) (b : u32 ) = a == b" ;
   "let lebU32 (a : u32 ) (b : u32 ) = a <= b" ;
-  "let ltbU32 (a : u32 ) (b : u32 ) = a < b"
+  "let ltbU32 (a : u32 ) (b : u32 ) = a < b" ;
+  "let gebU32 (a : u32 ) (b : u32 ) = a >= b" ;
+  "let gtbU32 (a : u32 ) (b : u32 ) = a > b"
   $>.
 
 Definition f64_ops :=
@@ -694,7 +696,9 @@ Definition f64_ops :=
   "let divF64 (i : f64) (j : f64) = i / j" ;
   "let eqF64 (a : f64 ) (b : f64 ) = a == b" ;
   "let lebF64 (a : f64 ) (b : f64 ) = a <= b" ;
-  "let ltbF64 (a : f64 ) (b : f64 ) = a < b"
+  "let ltbF64 (a : f64 ) (b : f64 ) = a < b" ;
+  "let gebF64 (a : f64 ) (b : f64 ) = a >= b" ;
+  "let gtbF64 (a : f64 ) (b : f64 ) = a > b"
   $>.
 
 

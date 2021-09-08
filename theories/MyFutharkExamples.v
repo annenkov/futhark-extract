@@ -52,6 +52,12 @@ Definition TT :=
   ; remap <%% SF64div %%> "divF64"
   ; remap <%% nat_to_float %%> "f64.i64"
 
+  (* integer inequalities *)
+  ; remap <%% Z.leb %%> "lebF64"
+  ; remap <%% Z.ltb %%> "ltbF64"
+  ; remap <%% Z.geb %%> "gebF64"
+  ; remap <%% Z.gtb %%> "gtbF64"
+
   (* bools *)
   ; remap <%% bool %%> "bool"
   (* lists *)
@@ -326,7 +332,6 @@ Module MaximumSegmentSum.
     let pf := fresh "pf" in
     destruct x as [v pf];
     unfold P__X in pf;
-    (* unfold X__cond in pf; *)
     try match goal with
         | var := proj1_sig (exist _ v _) |- _ => simpl in var; subst var
         end;
@@ -409,7 +414,6 @@ Module MaximumSegmentSum.
   Definition TT_extra :=
     [ remap <%% @Utils.reduce %%> "reduce"
     ; remap <%% @map %%> "map"
-    ; remap <%% @Z.max %%> "max"
     ].
 
   Definition test_input := [1; -2; 3; 4; -1; 5; -6; 1].
