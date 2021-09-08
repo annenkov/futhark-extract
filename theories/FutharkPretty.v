@@ -303,9 +303,12 @@ Section print_term.
         ++ print_term (ctx ++ ctx' ++ ctx)%list true false (lam_body fdef.(dbody)).
 
   Definition print_pat (prefix : string) (TT : env string) (ctor : string) (pt : list string * string) :=
-    let ctor_nm := from_option (look TT ctor) ("#"++ prefix ++ ctor) in
-    let print_parens := (Nat.ltb 1 (List.length pt.1)) in
-    "case " ++ parens (Nat.leb 1 (List.length pt.1)) ctor_nm ++ " " ++ concat " " (rev pt.1) ++ " -> " ++ pt.2.
+    match ctor with
+    | "Pair" => "case " ++ "(" ++ concat ", " (rev pt.1) ++ ") -> " ++ pt.2
+    | _ => let ctor_nm := from_option (look TT ctor) ("#"++ prefix ++ ctor) in
+          let print_parens := (Nat.ltb 1 (List.length pt.1)) in
+          "case " ++ parens (Nat.leb 1 (List.length pt.1)) ctor_nm ++ " " ++ concat " " (rev pt.1) ++ " -> " ++ pt.2
+    end.
 
 
   Definition print_transfer (args : list string) :=
