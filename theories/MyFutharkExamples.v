@@ -219,11 +219,35 @@ Module MaximumSegmentSum.
       subst; reflexivity.
     Qed.
 
+  Ltac max_equiv_tac := repeat rewrite max_equiv in *.
+
+  Lemma max_add_right:
+    forall a b c : Z, max a b + c = max (a + c) (b + c).
+  Proof. intros; max_equiv_tac; lia. Qed.
+
+  Lemma max_add_left:
+    forall a b c : Z, a + max b c = max (a + b) (a + c).
+  Proof. intros; max_equiv_tac; lia. Qed.
+
+  (* TODO I do not use this I think, so I should remove it. *)
+  Ltac max_add_normalize :=
+    repeat rewrite max_add_right in *;
+    repeat rewrite max_add_left in *;
+    repeat rewrite Z.add_assoc in *.
+
   Ltac destruct_ands H :=
     let C1 := fresh "C" in
     let C2 := fresh "C" in
     match type of H with
     | _ /\ _ => destruct H as [C1 C2]; destruct_ands C1; destruct_ands C2
+    | _ => idtac
+    end.
+
+  Ltac destruct_ors H :=
+    let D1 := fresh "D" in
+    let D2 := fresh "D" in
+    match type of H with
+    | _ \/ _ => destruct H as [D1 | D2]; try destruct_ors D1; try destruct_ors D2
     | _ => idtac
     end.
 
@@ -317,39 +341,57 @@ Module MaximumSegmentSum.
   Lemma X_proof_irrellevance:
     forall x y : X, proj1_sig x = proj1_sig y <-> x = y.
   Proof.
-    split; intros;
-      match goal with
-      | x : X, y: X |- _ => destruct x; destruct y
-      end;
-      simpl in *;
+    intros [] []; simpl; split; intros;
       match goal with
       | |- exist _ _ _ = exist _ _ _ => subst; f_equal; apply (UIP_dec bool_dec)
       | H : exist _ _ _ = exist _ _ _ |- _ => inversion H; reflexivity
       end.
   Qed.
 
-  Ltac destruct_X x :=
-    let v := fresh "v" in
-    let pf := fresh "pf" in
+  Ltac destruct_X_tuple x v pf :=
     destruct x as [v pf];
-    unfold P__X in pf;
+    (* in case we have bound the value in a let expression we get rid of the
+    corresponding hypothesis *)
     try match goal with
         | var := proj1_sig (exist _ v _) |- _ => simpl in var; subst var
         end;
-    destruct_tuple v;
-    simpl in *;
-    try destruct_bool pf.
+    destruct_tuple v.
 
+  (** tactic for destructing the tuple of an element in X and seperating out the
+      inequalities in the condition. *)
+  Ltac destruct_X x :=
+    let v := fresh "v" in
+    let pf := fresh "pf" in
+    destruct_X_tuple x v pf;
+    simpl in *;
+    apply X_cond_equiv in pf;
+    destruct_ands pf.
+
+  (** tactic for destructing the tuple of an element in X and seperating out the
+      inequalities in the condition. *)
   Ltac destruct_Xs :=
     fold X in *;
-    unfold P__X in *;
-    unfold X__cond in *;
-    repeat let x := fresh in
-           match goal with
-           | [ x : X |- _ ] => destruct_X x
-           end;
-    convert_ineqb_to_ineq.
+    repeat (let x := fresh in
+            match goal with
+            | [ x : X |- _ ]
+              => let v := fresh "v" in
+                let pf := fresh "pf" in
+                destruct_X_tuple x v pf
+            end);
+    simpl in *;
+    repeat (let pf := fresh "pf" in
+            match goal with
+            | [pf : P__X _ |- _] => apply X_cond_equiv in pf; destruct_ands pf
+            end).
 
+  (** operator for calculating the maximal segment sum with the reduce
+      operation. The tuple values, (x1, x2, x3, x4), should be understood as
+      follows:
+      - x1: maximal sum of a segment
+      - x2: maximal sum of a left bounding segment
+      - x3: maximal sum of a right bounding segment
+      - x4: the total sum of the elements
+   *)
   Program Definition redOp (x y : X) : X :=
     let '(mssx, misx, mcsx, tsx) := proj1_sig x in
     let '(mssy, misy, mcsy, tsy) := proj1_sig y in
@@ -364,7 +406,8 @@ Module MaximumSegmentSum.
       destruct_Xs;
       destruct_tuple_eqs;
       subst;
-      split_X_cond_goal; lia.
+      split_X_cond_goal;
+      lia.
   Defined.
   Check redOp.
 
@@ -380,11 +423,14 @@ Module MaximumSegmentSum.
        Utils.munit_right := _;
        Utils.massoc      := _
     |}.
-  all: intros; apply X_proof_irrellevance; destruct_Xs; repeat rewrite max_equiv.
-  * split_tuple_eq_goal; lia.
-  * split_tuple_eq_goal; lia.
-  * destruct_Xs. split_tuple_eq_goal; lia.
-  (* all: intros; destruct_tuples; destruct_Xs; unfold redOp; simpl; split_tuple_eq_goal; lia. *)
+  (* TODO This is really slow. Is it because I do not help [lia] enough? *)
+  all:
+    intros;
+    apply X_proof_irrellevance;
+    destruct_Xs;
+    max_equiv_tac;
+    split_tuple_eq_goal;
+    lia.
   Defined.
   Check X__monoid.
 
@@ -401,10 +447,12 @@ Module MaximumSegmentSum.
   Defined.
   Check mapOp.
 
+  Definition mss_core (xs : list Z) : X :=
+    Utils.reduce redOp X__unit (map mapOp xs).
+
   Definition mss (xs : list Z) : Z :=
-    match proj1_sig (Utils.reduce redOp X__unit (map mapOp xs)) with
-    | (x, _, _, _) => x
-    end.
+    let '(x, _, _, _) := proj1_sig (mss_core xs) in
+    x.
 
   Definition mss_prelude :=
     <$
