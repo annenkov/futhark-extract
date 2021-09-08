@@ -13,15 +13,35 @@ From Coq Require Import Floats.
 From Coq Require Import Lia.
 From Coq Require Import Logic.Eqdep_dec.
 
-From MetaCoq.Template Require Import MCString.
-From MetaCoq.Template Require Import MCList.
+From MetaCoq.Template Require Import All.
+From MetaCoq.Template Require Import monad_utils.
 
-From stdpp Require Import base.
+Import MonadNotation.
+From stdpp Require base.
 
 Import ListNotations.
 
 Open Scope string.
 Open Scope pair_scope.
+Open Scope bool_scope.
+
+(** Extracts [program] to Futhark, adds a new definition [extracted_name]
+    with the extracted program and also prints the program.
+    The definition with the extracted program can be used later on
+    to redirect to a file, for example. *)
+Definition extract_and_print {A}
+           (extracted_name : string)
+           (prelude : string)
+           (translate_constants : list (BasicAst.kername * string))
+           (translate_ctors : list (string * string))
+           (tests : option FutharkTest)
+           (program : A) :=
+  res <- futhark_extraction "" prelude translate_constants translate_ctors tests program;;
+  match res with
+  | inl s => tmDefinition extracted_name s;;
+             tmMsg s
+  | inr s => tmFail s
+  end.
 
 Definition float_zero := S754_zero false.
 
@@ -287,9 +307,9 @@ Module MaximumSegmentSum.
     | ?B0 = true  => let B1 := fresh "B" in
                     let B2 := fresh "B" in
                     match B0 with
-                    | _ && _ => apply andb_true_iff in B; destruct B as [B1 B2]
-                    | _ || _  => apply orb_true_iff  in B; destruct B as [B1 | B2]
-                    | negb _ => apply negb_true_iff in B
+                    | _ && _ => apply Bool.andb_true_iff in B; destruct B as [B1 B2]
+                    | _ || _  => apply Bool.orb_true_iff  in B; destruct B as [B1 | B2]
+                    | negb _ => apply Bool.negb_true_iff in B
                     | _ => fail
                     end;
                     try destruct_bool B1;
@@ -297,9 +317,9 @@ Module MaximumSegmentSum.
     | ?B0 = false => let B1 := fresh "B" in
                     let B2 := fresh "B" in
                     match B0 with
-                    | _ && _ => apply andb_false_iff in B; destruct B as [B1 | B2]
-                    | _ || _  => apply orb_false_iff  in B; destruct B as [B1 B2]
-                    | negb _ => apply negb_false_iff in B
+                    | _ && _ => apply Bool.andb_false_iff in B; destruct B as [B1 | B2]
+                    | _ || _  => apply Bool.orb_false_iff  in B; destruct B as [B1 B2]
+                    | negb _ => apply Bool.negb_false_iff in B
                     | _ => fail
                     end;
                     try destruct_bool B1;
@@ -325,7 +345,7 @@ Module MaximumSegmentSum.
            end.
 
   Ltac split_X_cond_goal :=
-    repeat (apply andb_true_iff; split); apply Z.leb_le.
+    repeat (apply Bool.andb_true_iff; split); apply Z.leb_le.
 
   Lemma X_cond_equiv:
     forall x : Z * Z * Z * Z, P__X x <-> let '(x1, x2, x3, x4) := x in
@@ -343,7 +363,7 @@ Module MaximumSegmentSum.
   Proof.
     intros [] []; simpl; split; intros;
       match goal with
-      | |- exist _ _ _ = exist _ _ _ => subst; f_equal; apply (UIP_dec bool_dec)
+      | |- exist _ _ _ = exist _ _ _ => subst; f_equal; apply (UIP_dec Bool.bool_dec)
       | H : exist _ _ _ = exist _ _ _ |- _ => inversion H; reflexivity
       end.
   Qed.
@@ -475,10 +495,11 @@ Module MaximumSegmentSum.
      ; FTinput := string_of_list (fun n => string_of_Z n ++ "i64")%string test_input
      ; FToutput := string_of_Z test_output ++ "i64" |}.
 
-  MetaCoq Run (futhark_extraction "" mss_prelude
-                                  (TT ++ TT_extra) TT_ctors
-                                  (Some futhark_mss_test)
-                                  mss).
+  MetaCoq Run (extract_and_print "mss_futhark"
+                                 mss_prelude
+                                 (TT ++ TT_extra) TT_ctors
+                                 (Some futhark_mss_test)
+                                 mss).
 
 
   (** From this point we prove functional correctness of the [mss] function*)
@@ -676,3 +697,6 @@ Module MaximumSegmentSum.
   Qed.
 
 End MaximumSegmentSum.
+
+Redirect "./extracted/auto-generated/mss.fut"
+         MetaCoq Run (tmMsg MaximumSegmentSum.mss_futhark).
