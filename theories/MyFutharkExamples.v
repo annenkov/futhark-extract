@@ -100,47 +100,6 @@ Open Scope list_scope.
 
 Module Utils.
 
-  Class IsMonoid__sig {A : Type} {P : A -> Prop} (op : sig P -> sig P -> sig P) (e : sig P) : Prop :=
-    { munit_left__sig  : forall m, proj1_sig (op e m) = proj1_sig m;
-      munit_right__sig : forall m, proj1_sig (op m e) = proj1_sig m;
-      massoc__sig      : forall m1 m2 m3, proj1_sig (op m1 (op m2 m3)) = proj1_sig (op (op m1 m2) m3);
-      mirlv_left__sig  : forall (m : sig P) (a : A) (p1 p2 : P a), proj1_sig (op (exist P a p1) m) = proj1_sig (op (exist P a p2) m);
-      mirlv_right__sig : forall (m : sig P) (a : A) (p1 p2 : P a), proj1_sig (op m (exist P a p1)) = proj1_sig (op m (exist P a p2))
-    }.
-
-  Definition reduce__sig {A : Type} {P : A -> Prop} (op : sig P -> sig P -> sig P) (e : sig P) `{IsMonoid__sig A P op e} (xs : list (sig P)) :=
-    fold_right op e xs.
-
-  Theorem reduce_prop__sig:
-    forall (A : Type) (P : A -> Prop) (op : sig P -> sig P -> sig P) (ne : sig P) (isM : IsMonoid__sig op ne) (l1 l2 : list (sig P)),
-      proj1_sig (reduce__sig op ne (l1 ++ l2)) = proj1_sig (op (reduce__sig op ne l1) (reduce__sig op ne l2))
-      /\ proj1_sig (reduce__sig op ne []) = proj1_sig ne.
-  Proof.
-    intros; split; auto;
-      match goal with
-      | |- context[?list1 ++ ?list2] => induction list1 as [|? ? IH]
-      end;
-      simpl.
-    * rewrite munit_left__sig; trivial.
-    * rewrite <- massoc__sig
-      ; repeat match goal with
-               | |- context[reduce__sig ?op ?ne ?list]
-                 => let res := fresh "red" in
-                   remember (reduce__sig op ne list) as res
-               end
-      ; match goal with
-        | IH : proj1_sig ?r1 = proj1_sig ?r2 |- context[op _ ?r2]
-          => let el1 := fresh "el" in
-            let pf1 := fresh "pf" in
-            let el2 := fresh "el" in
-            let pf2 := fresh "pf" in
-            destruct r1 as [el1 pf1]
-            ; destruct r2 as [el2 pf2]
-            ; simpl in IH; subst el1
-            ; rewrite (mirlv_right__sig _ _ pf1 pf2)
-        end
-      ; reflexivity.
-  Qed.
 
   Class IsMonoid (M : Type) (op : M -> M -> M) (e : M) : Prop :=
     { munit_left : forall m, (op e m) = m;
