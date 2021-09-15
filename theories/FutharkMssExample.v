@@ -131,29 +131,6 @@ Module Utils.
 
 End Utils.
 
-Import Utils.
-
-Module Tuples.
-  (** Example of how tuples of length greater than two are exported
-      when deconstructed with match or let expressions.
-   *)
-
-  Definition tmatch (x : Z * Z * Z * Z) :=
-    match x with
-    | (y, _, _, _) => y
-    end.
-
-  Definition tlet (x : Z * Z * Z * Z) :=
-    let '(y, _, _, _) := x in y.
-
-  Definition twiceFirst (x : Z * Z * Z * Z) := (tmatch x, tlet x).
-
-  MetaCoq Run (futhark_extraction "" "" TT []
-                                  None
-                                  twiceFirst).
-
-End Tuples.
-
 Module MaximumSegmentSum.
   (** Futhark implementation of maximum segment sum:
 
@@ -185,6 +162,8 @@ Module MaximumSegmentSum.
         reduce redOp (0,0,0,0) (map mapOp xs) in
       x
   *)
+
+  Import Utils.
 
   Open Scope Z.
 

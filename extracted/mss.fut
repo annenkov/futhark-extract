@@ -17,7 +17,7 @@ let eqI64 (i : i64) (j : i64) = i == j
 
 type x = sig_ (((i64,i64),i64),i64)
 
-let max (x : i64) (y : i64) = if gtbI64 x y then x else y
+let max (x : i64) (y : i64) = if gtI64 x y then x else y
 
 let redOp_aux (x : (((i64,i64),i64),i64)) (y : (((i64,i64),i64),i64)) = match x
 case (p, tsx) -> (match p
