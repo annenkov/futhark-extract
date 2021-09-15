@@ -73,10 +73,10 @@ Definition TT :=
   ; remap <%% nat_to_float %%> "f64.i64"
 
   (* integer inequalities *)
-  ; remap <%% Z.leb %%> "lebI64"
-  ; remap <%% Z.ltb %%> "ltbI64"
-  ; remap <%% Z.geb %%> "gebI64"
-  ; remap <%% Z.gtb %%> "gtbI64"
+  ; remap <%% Z.leb %%> "leI64"
+  ; remap <%% Z.ltb %%> "ltI64"
+  ; remap <%% Z.geb %%> "geI64"
+  ; remap <%% Z.gtb %%> "gtI64"
 
   (* bools *)
   ; remap <%% bool %%> "bool"
