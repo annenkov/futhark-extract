@@ -17,7 +17,7 @@ If it's a fresh installation (or to a newly created switch/root), the following 
 
 ```
 opam repo add coq-released https://coq.inria.fr/opam/released
-opam pin -j 4 add https://github.com/annenkov/futhark-extract
+opam pin -j 4 add https://github.com/annenkov/futhark-extract.git
 ```
 
 If Coq is not installed, it will be installed as one of the dependencies.
