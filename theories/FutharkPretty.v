@@ -664,6 +664,8 @@ Definition i32_ops :=
   "let divI32 (i : i32) (j : i32) = i / j" ;
   "let leI32 (i : i32) (j : i32) = i <= j" ;
   "let ltI32 (i : i32) (j : i32) = i < j" ;
+  "let geI32 (i : i32) (j : i32) = i >= j" ;
+  "let gtI32 (i : i32) (j : i32) = i > j" ;
   "let eqI32 (i : i32) (j : i32) = i == j"
   $>.
 
@@ -675,6 +677,8 @@ Definition i64_ops :=
   "let divI64 (i : i64) (j : i64) = i / j" ;
   "let leI64 (i : i64) (j : i64) = i <= j" ;
   "let ltI64 (i : i64) (j : i64) = i < j" ;
+  "let geI64 (i : i64) (j : i64) = i >= j" ;
+  "let gtI64 (i : i64) (j : i64) = i > j" ;
   "let eqI64 (i : i64) (j : i64) = i == j"
   $>.
 

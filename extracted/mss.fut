@@ -11,23 +11,23 @@ let multI64 (i : i64) (j : i64) = i * j
 let divI64 (i : i64) (j : i64) = i / j
 let leI64 (i : i64) (j : i64) = i <= j
 let ltI64 (i : i64) (j : i64) = i < j
+let geI64 (i : i64) (j : i64) = i >= j
+let gtI64 (i : i64) (j : i64) = i > j
 let eqI64 (i : i64) (j : i64) = i == j
 
 type x = sig_ (((i64,i64),i64),i64)
 
-let max (x : i64) (y : i64) = if gtbF64 x y then x else y
+let max (x : i64) (y : i64) = if gtbI64 x y then x else y
 
-let redOp (x : x) (y : x) = let filtered_var = id x in 
-let program_branch_0 = \mssx -> \misx -> \mcsx -> \tsx -> \Heq_anonymous -> let filtered_var0 = id y in 
-let program_branch_0 = \mssy -> \misy -> \mcsy -> \tsy -> \Heq_anonymous0 ->  ( ( ((max mssx (max mssy (addI64 mcsx misy))), (max misx (addI64 tsx misy))), (max mcsy (addI64 mcsx tsy))), (addI64 tsx tsy)) in 
-match filtered_var0
-case (p, tsy) -> (match p
-case (p0, mcsy) -> (match p0
-case (mssy, misy) -> (program_branch_0 mssy misy mcsy tsy))) () in 
-match filtered_var
+let redOp_aux (x : (((i64,i64),i64),i64)) (y : (((i64,i64),i64),i64)) = match x
 case (p, tsx) -> (match p
 case (p0, mcsx) -> (match p0
-case (mssx, misx) -> (program_branch_0 mssx misx mcsx tsx))) ()
+case (mssx, misx) -> (match y
+case (p1, tsy) -> (match p1
+case (p00, mcsy) -> (match p00
+case (mssy, misy) ->  ( ( ((max mssx (max mssy (addI64 mcsx misy))), (max misx (addI64 tsx misy))), (max mcsy (addI64 mcsx tsy))), (addI64 tsx tsy)))))))
+
+let redOp (x : x) (y : x) = (redOp_aux (id x) (id y))
 
 let X__unit  =  ( ( (0i64, 0i64), 0i64), 0i64)
 

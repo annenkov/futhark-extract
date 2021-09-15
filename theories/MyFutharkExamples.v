@@ -73,10 +73,10 @@ Definition TT :=
   ; remap <%% nat_to_float %%> "f64.i64"
 
   (* integer inequalities *)
-  ; remap <%% Z.leb %%> "lebF64"
-  ; remap <%% Z.ltb %%> "ltbF64"
-  ; remap <%% Z.geb %%> "gebF64"
-  ; remap <%% Z.gtb %%> "gtbF64"
+  ; remap <%% Z.leb %%> "lebI64"
+  ; remap <%% Z.ltb %%> "ltbI64"
+  ; remap <%% Z.geb %%> "gebI64"
+  ; remap <%% Z.gtb %%> "gtbI64"
 
   (* bools *)
   ; remap <%% bool %%> "bool"
@@ -100,37 +100,38 @@ Open Scope list_scope.
 
 Module Utils.
 
-
   Class IsMonoid (M : Type) (op : M -> M -> M) (e : M) : Prop :=
     { munit_left : forall m, (op e m) = m;
       munit_right : forall m, (op m e) = m;
       massoc : forall m1 m2 m3, op m1 (op m2 m3) = op (op m1 m2) m3
     }.
 
-  Definition reduce {A : Type} (op : A -> A -> A) (e : A) `{IsMonoid A op e} (xs : list A) :=
+  Definition reduce {A : Type} (op : A -> A -> A) (e : A) `{IsMonoid A op e} (xs : list A) : A :=
     fold_right op e xs.
 
   (** The reduce function is multiplicative as a monoid homomorphism. *)
-  Theorem reduce_monoid_homo_mult (A : Type) (op : A -> A -> A) (ne : A) `{Utils.IsMonoid A op ne} :
-    forall l1 l2 : list A, Utils.reduce op ne (l1 ++ l2) = op (Utils.reduce op ne l1) (Utils.reduce op ne l2).
+  Theorem reduce_monoid_homo_mult (A : Type) (op : A -> A -> A) (ne : A) `{IsMonoid A op ne} :
+    forall l1 l2 : list A, reduce op ne (l1 ++ l2) = op (reduce op ne l1) (reduce op ne l2).
   Proof.
-    intros l1 l2; induction l1 as [|? ? IH]; simpl.
-    * rewrite Utils.munit_left; trivial.
-    * rewrite IH; rewrite Utils.massoc; trivial.
+    intros l1 l2; induction l1 as [ |? ? IH]; simpl.
+    * rewrite munit_left; trivial.
+    * rewrite IH; rewrite massoc; trivial.
   Qed.
 
   (** From the multiplicative property of reduce, it behaves as follows with the
       cons operation. *)
-  Corollary reduce_monoid_homo_cons (A : Type) (op : A -> A -> A) (ne : A) `{Utils.IsMonoid A op ne} :
-    forall (a : A) (l : list A), Utils.reduce op ne (a :: l) = op a (Utils.reduce op ne l).
+  Corollary reduce_monoid_homo_cons (A : Type) (op : A -> A -> A) (ne : A) `{IsMonoid A op ne} :
+    forall (a : A) (l : list A), reduce op ne (a :: l) = op a (reduce op ne l).
   Proof. intros; reflexivity. Qed.
 
   (** The reduce function preserves the neutral element as a monoid homomorphism *)
-  Theorem reduce_monoid_homo_unit (A : Type) (op : A -> A -> A) (ne : A) `{Utils.IsMonoid A op ne} :
-    Utils.reduce op ne [] = ne.
+  Theorem reduce_monoid_homo_unit (A : Type) (op : A -> A -> A) (ne : A) `{IsMonoid A op ne} :
+    reduce op ne [] = ne.
   Proof. reflexivity. Qed.
 
 End Utils.
+
+Import Utils.
 
 Module Tuples.
   (** Example of how tuples of length greater than two are exported
@@ -371,18 +372,24 @@ Module MaximumSegmentSum.
       - x3: maximal sum of a right bounding segment
       - x4: the total sum of the elements
    *)
-  Program Definition redOp (x y : X) : X :=
-    let '(mssx, misx, mcsx, tsx) := proj1_sig x in
-    let '(mssy, misy, mcsy, tsy) := proj1_sig y in
+
+  Definition redOp_aux (x y : Z * Z * Z * Z) : Z * Z * Z * Z :=
+    let '(mssx, misx, mcsx, tsx) := x in
+    let '(mssy, misy, mcsy, tsy) := y in
     ( max mssx (max mssy (mcsx + misy))
     , max misx (tsx + misy)
     , max mcsy (mcsx + tsy)
     , tsx + tsy
     ).
+
+  Program Definition redOp (x y : X) : X :=
+    redOp_aux (proj1_sig x) (proj1_sig y).
   Next Obligation.
     intros;
-      repeat rewrite max_equiv;
       destruct_Xs;
+      unfold P__X;
+      unfold X__cond;
+      repeat rewrite max_equiv;
       destruct_tuple_eqs;
       subst;
       split_X_cond_goal;
@@ -402,7 +409,8 @@ Module MaximumSegmentSum.
        Utils.munit_right := _;
        Utils.massoc      := _
     |}.
-  (* TODO This is really slow. Is it because I do not help [lia] enough? *)
+  (* TODO This is really slow. Is it because I do not help [lia] enough? Goal 8
+     is the slow one *)
   all:
     intros;
     apply X_proof_irrellevance;
@@ -516,8 +524,8 @@ Module MaximumSegmentSum.
   Lemma mss_pos:
     forall l : list Z, 0 <= mss l.
   Proof.
-    intros l; unfold mss; induction l; simpl.
-    * reflexivity.
+    intros l; unfold mss; induction l.
+    * simpl; reflexivity.
     * rewrite mss_core_cons; destruct_mss_cores; max_equiv_tac; lia.
   Qed.
 
@@ -549,8 +557,8 @@ Module MaximumSegmentSum.
       let '(_, _, _, s) := proj1_sig (mss_core l) in
       s = sum l.
   Proof.
-    intros l; induction l; simpl.
-    * reflexivity.
+    intros l; induction l.
+    * simpl; reflexivity.
     * rewrite mss_core_cons; destruct_mss_core l; lia.
   Qed.
 
@@ -559,8 +567,8 @@ Module MaximumSegmentSum.
       let '(_, x2, _, _) := proj1_sig (mss_core l) in
       exists l1 l2 : list Z, l = l1 ++ l2 /\ sum l1 = x2.
   Proof.
-    intros l; induction l; simpl.
-    * exists []; exists []; auto.
+    intros l; induction l.
+    * simpl; exists []; exists []; auto.
     * rewrite mss_core_cons;
       destruct_mss_core l;
       (* We split up into tree case and solve these separately *)
