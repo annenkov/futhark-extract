@@ -4,3 +4,4 @@ theories/FutharkPretty.v
 theories/FutharkExtract.v
 theories/FutharkExamples.v
 theories/FutharkMssExample.v
+theories/FutharkMssSizeExample.v
