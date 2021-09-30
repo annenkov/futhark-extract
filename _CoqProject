@@ -3,5 +3,13 @@
 theories/FutharkPretty.v
 theories/FutharkExtract.v
 theories/FutharkExamples.v
-theories/FutharkMssExample.v
-theories/FutharkMssSizeExample.v
+theories/FutharkArrays.v
+theories/FutharkUtils.v
+theories/FutharkUnsized.v
+theories/MssUnsizedDefinition.v
+theories/MssUnsizedCorrectness.v
+theories/MssUnsizedExtract.v
+theories/FutharkSized.v
+theories/MssSizedDefinition.v
+theories/MssSizedCorrectness.v
+theories/MssSizedExtract.v
