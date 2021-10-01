@@ -5,6 +5,7 @@ From Coq Require Import ZArith.
 Require Import FutharkArrays.
 Require Import FutharkUtils.
 Require Import FutharkSized.
+Require Import MssUtils.
 Require Import MssSizedDefinition.
 
 Open Scope Z.

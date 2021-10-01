@@ -4,6 +4,7 @@ From Coq Require Import List.
 
 Require Import FutharkUtils.
 Require Import FutharkUnsized.
+Require Import MssUtils.
 Require Import MssUnsizedDefinition.
 
 Import ListNotations.

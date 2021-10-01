@@ -19,6 +19,7 @@ Require Import FutharkUnsized.
 Require Import MssUnsizedDefinition.
 
 Open Scope string.
+Open Scope Z.
 
 (** Extracts [program] to Futhark, adds a new definition [extracted_name]
     with the extracted program and also prints the program.
@@ -77,12 +78,6 @@ Definition TT_ctors :=
   ; ("false", "false")].
 
 Definition mss_prelude := (sig_defs ++ i64_ops)%string.
-
-(* Definition mss_prelude := *)
-(*   <$ *)
-(*     sig_defs; *)
-(*     i64_ops *)
-(*   $>. *)
 
 Definition TT_extra :=
   [ remap <%% @reduce %%> "reduce"
