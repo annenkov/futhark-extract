@@ -15,8 +15,11 @@ From stdpp Require base.
 
 Import ListNotations.
 
-Require Import FutharkUnsized.
-Require Import MssUnsizedDefinition.
+Require FutharkArrays.
+Require FutharkUnsized.
+Require FutharkSized.
+Require MssUnsizedDefinition.
+Require MssSizedDefinition.
 
 Open Scope string.
 Open Scope Z.
@@ -79,26 +82,65 @@ Definition TT_ctors :=
 
 Definition mss_prelude := (sig_defs ++ i64_ops)%string.
 
-Definition TT_extra :=
-  [ remap <%% @reduce %%> "reduce"
-  ; remap <%% @map %%> "map"
-  ].
+Module Unsized.
 
-Definition test_input := [1; -2; 3; 4; -1; 5; -6; 1].
-Definition test_output := 11.
+  Import FutharkUnsized.
+  Import MssUnsizedDefinition.
 
-Example mss_test : mss test_input = test_output. reflexivity. Qed.
+  Definition TT_extra :=
+    [ remap <%% @reduce %%> "reduce"
+    ; remap <%% @map %%> "map"
+    ].
 
-Definition futhark_mss_test :=
-  {| FTname := "Maximum segment sum test"
-    ; FTinput := string_of_list (fun n => string_of_Z n ++ "i64")%string test_input
-    ; FToutput := string_of_Z test_output ++ "i64" |}.
+  Definition test_input := [1; -2; 3; 4; -1; 5; -6; 1].
+  Definition test_output := 11.
 
-MetaCoq Run (extract_and_print "mss_unsized_futhark"
-                                mss_prelude
-                                (TT ++ TT_extra) TT_ctors
-                                (Some futhark_mss_test)
-                                mss).
+  Example mss_test : mss test_input = test_output. reflexivity. Qed.
+
+  Definition futhark_mss_test :=
+    {| FTname := "Maximum segment sum test"
+     ; FTinput := string_of_list (fun n => string_of_Z n ++ "i64")%string test_input
+     ; FToutput := string_of_Z test_output ++ "i64" |}.
+
+  MetaCoq Run (extract_and_print "mss_futhark"
+                                  mss_prelude
+                                  (TT ++ TT_extra) TT_ctors
+                                  (Some futhark_mss_test)
+                                  mss).
+
+End Unsized.
+
+Module Sized.
+
+  Import FutharkSized.
+  Import FutharkArrays.
+  Import MssSizedDefinition.
+
+  Definition TT_extra :=
+    [ remap <%% @reduce %%> "reduce"
+    ; remap <%% @map %%> "map"
+    ].
+
+  Definition test_input := to_arr [1; -2; 3; 4; -1; 5; -6; 1] eq_refl.
+  Definition test_output := 11.
+
+  Example mss_test : mss test_input = test_output. reflexivity. Qed.
+
+  Definition futhark_mss_test :=
+    {| FTname := "Maximum segment sum test"
+     ; FTinput := string_of_list (fun n => string_of_Z n ++ "i64")%string (proj1_sig test_input)
+     ; FToutput := string_of_Z test_output ++ "i64" |}.
+
+  MetaCoq Run (extract_and_print "mss_futhark"
+                                  mss_prelude
+                                  (TT ++ TT_extra) TT_ctors
+                                  (Some futhark_mss_test)
+                                  mss).
+
+End Sized.
 
 Redirect "./extracted/auto-generated/mss_unsized.fut"
-         MetaCoq Run (tmMsg mss_unsized_futhark).
+         MetaCoq Run (tmMsg Unsized.mss_futhark).
+
+Redirect "./extracted/auto-generated/mss_sized.fut"
+         MetaCoq Run (tmMsg Sized.mss_futhark).
