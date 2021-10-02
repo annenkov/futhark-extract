@@ -10,65 +10,15 @@ Require Import MssSizedDefinition.
 
 Open Scope Z.
 
+(** TODO The types [Segment] and [Prefix] should maybe be moved to the Arrays
+module. *)
+
 (** From this point we prove functional correctness of the [mss] function*)
 Inductive Segment {A : Type} : forall (n1 n2 : nat), ([|n1|]A) -> ([|n2|]A) -> Prop :=
 | SegmentHead : forall (n1 n2 : nat) (l1 : [|n1|]A) (l2 : [|n2|]A),
     Prefix n1 n2 l1 l2 -> Segment n1 n2 l1 l2
 | SegmentInner : forall (n1 n2 : nat) (h : A) (l1 : [|n1|]A) (l2 : [|n2|]A),
     Segment n1 n2 l1 l2 -> Segment n1 (S n2) l1 (h [::] l2).
-
-(** TODO The types [Segment] and [Prefix] should maybe be moved to the Arrays
-module. *)
-
-Lemma Tuple_dec {A B : Type}:
-  forall (A_dec : forall x y : A, {x = y} + {x <> y})
-    (B_dec : forall x y : B, {x = y} + {x <> y}),
-    forall x y : B * A, {x = y} + {x <> y}.
-Proof.
-  unfold not;
-    intros A_dec B_dec [x1 x2] [y1 y2];
-    specialize (B_dec x1 y1) as [Eq1 | Eq1];
-    specialize (A_dec x2 y2) as [Eq2 | Eq2];
-    subst;
-    (apply left; reflexivity) + (apply right; inversion 1; auto).
-Qed.
-
-Lemma Z_dec:
-  forall x y : Z, {x = y} + {x <> y}.
-Proof.
-  intros;
-    unfold not;
-    pose proof (Z_dec x y) as [[Eq | Eq] | Eq];
-    [apply right | apply right | apply left];
-    lia.
-Qed.
-
-Lemma ZZZZ_dec:
-  forall x y : Z * Z * Z * Z, {x = y} + {x <> y}.
-Proof.
-  apply (Tuple_dec Z_dec);
-  apply (Tuple_dec Z_dec);
-  apply (Tuple_dec Z_dec Z_dec).
-Qed.
-
-Lemma X_dec:
-  forall x y : X, {x = y} + {x <> y}.
-Proof.
-  unfold not;
-  intros [x px] [y py];
-    pose proof (ZZZZ_dec x y) as [Eq | Eq].
-  * apply left; subst; apply X_proof_irrellevance; reflexivity.
-  * apply right; intros H; apply (f_equal proj1_sig) in H; simpl in H; auto.
-Qed.
-
-#[refine]
-Instance sum__monoid : IsMonoid Z (fun x y => x + y) 0 :=
-  {| munit_left  := _;
-      munit_right := _;
-      massoc      := _
-  |}.
-all: lia.
-Defined.
 
 Definition sum {n : nat} (l : [|n|]Z) : Z :=
   reduce (fun x y => x + y) 0 l.
@@ -86,7 +36,7 @@ Definition sum_list (l : list Z) : Z :=
 Lemma sum_form {n : nat}:
   forall l : [|n|]Z, sum l = sum_list (proj1_sig l).
 Proof.
-  intros l; induction n, l using (arr_ind Z_dec); autorewrite with mss; reflexivity.
+  intros l; induction n, l using arr_ind; autorewrite with mss; reflexivity.
 Qed.
 Hint Rewrite @sum_form : mss.
 
@@ -138,7 +88,7 @@ Lemma mss_core_left {n : nat}:
     let '(_, x2, _, _) := proj1_sig (mss_core l) in
     exists (n' : nat) (l' : [|n'|]Z), Prefix n' n l' l /\ sum l' = x2.
 Proof.
-  intros l; induction n, l using (arr_ind Z_dec); simplify_arrays Z_dec.
+  intros l; induction n, l using arr_ind; simplify_arrays.
   * exists 0%nat; exists nil_arr; split; [ apply PrefixEmpty | auto ].
   * autorewrite with mss;
     destruct_mss_core l;
@@ -176,8 +126,8 @@ Lemma mss_core_inner {n : nat}:
     exists (n' : nat) (l' : [|n'|]Z), Segment n' n l' l /\ sum l' = x1.
 Proof.
   intros l;
-    induction n, l as [l|n h l IH] using (arr_ind Z_dec);
-    simplify_arrays Z_dec.
+    induction n, l as [l|n h l IH] using arr_ind;
+    simplify_arrays.
   * exists 0%nat; exists nil_arr; split.
     - apply SegmentHead; apply PrefixEmpty.
     - auto.
@@ -222,7 +172,7 @@ Lemma arr_dest {A : Type} (A_dec : forall x y : A, {x = y} + {x <> y}):
       -> forall (n : nat) (arr : [|n|]A), P n arr.
 Proof.
   intros P Cnil Ccons n arr;
-    induction n, arr using (arr_ind A_dec);
+    induction n, arr using arr_ind;
     [ apply Cnil | apply Ccons].
 Qed.
 
@@ -233,7 +183,7 @@ Proof.
     induction HSeg as [n1 n2 l1 l2 HPre| ].
   * assert (lem :  let '(x1, x2, x3, x4) := proj1_sig (mss_core l2) in sum l1 <= x2). {
       induction HPre;
-        simplify_arrays Z_dec.
+        simplify_arrays.
       + destruct_mss_cores; autorewrite with mss; simpl; auto with mss.
       + rewrite mss_core_cons;
           rewrite sum_cons;

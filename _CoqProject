@@ -4,8 +4,8 @@ theories/FutharkPretty.v
 theories/FutharkExtract.v
 theories/FutharkExamples.v
 
-theories/FutharkArrays.v
 theories/FutharkUtils.v
+theories/FutharkArrays.v
 
 theories/FutharkUnsized.v
 theories/FutharkSized.v

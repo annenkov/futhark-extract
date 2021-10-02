@@ -14,7 +14,7 @@ Open Scope arr_scope.
 
 Section reduce.
 
-  Context {A : Type} (A_dec : forall x y : A, {x = y} + {x <> y}).
+  Context {A : Type} `{Dec A}.
   Context (op : A -> A -> A) (ne : A).
   Context `{IsMonoid A op ne}.
 
@@ -48,8 +48,8 @@ Section reduce.
       (** TODO I have had to explicitly add [A_dec] though I would like it to
           be resolved automatically, since there is a matching assumptions,
           and it otherwise results in a shelved goal. *)
-      induction n1, a1 as [empty | n1 h1 a1 IH] using (arr_ind A_dec).
-    * intros; rewrite reduce_monoid_homo_unit; rewrite (app_nil A_dec); rewrite munit_left; reflexivity.
+      induction n1, a1 as [empty | n1 h1 a1 IH] using arr_ind.
+    * intros; rewrite reduce_monoid_homo_unit; rewrite app_nil; rewrite munit_left; reflexivity.
     * intros; unfold reduce in *; simpl in *; rewrite IH; rewrite massoc; reflexivity.
   Qed.
   Check reduce_cons.
@@ -58,7 +58,7 @@ End reduce.
 
 Section scan.
 
-  Context {A : Type} {A_dec : forall x y : A, {x = y} + {x <> y}}.
+  Context {A : Type} `{Dec A}.
   Context (op : A -> A -> A) (ne : A).
   Context `{IsMonoid A op ne}.
 
@@ -72,7 +72,7 @@ Section scan.
     simpl; f_equal; rewrite List.map_length; assumption.
   Defined.
   Next Obligation.
-    destruct xs; [apply H1 | apply (H0 a xs (#|xs|))]; split; reflexivity.
+    destruct xs; [apply H2 | apply (H1 a xs (#|xs|))]; split; reflexivity.
   Defined.
   Next Obligation.
     unfold not; split; intros * []; discriminate.
@@ -86,10 +86,10 @@ Section scan.
     forall (n : nat) (h : A) (t : [|n|]A), scan (h [::] t) = h [::] map (op h) (scan t).
   Proof.
     intros;
-      apply (proof_irrelevance_arr A_dec);
+      apply proof_irrelevance;
       simpl;
       repeat f_equal;
-      apply (proof_irrelevance_arr A_dec);
+      apply proof_irrelevance;
       reflexivity.
   Qed.
 
@@ -101,11 +101,11 @@ Section scan.
     intros i;
       induction i as [ | i IH ];
       intros n p xs pre;
-      destruct_arrs A_dec;
+      destruct_arrs;
       inversion pre;
       subst;
-      simplify_arrays A_dec;
-      repeat rewrite (list_cons_arr_cons A_dec);
+      simplify_arrays;
+      repeat rewrite list_cons_arr_cons;
       rewrite scan__cons.
     * rewrite reduce_cons_nil;
       (** TODO The above rewrite leaves a [IsMonoid A op ne] goal, which I do
@@ -114,7 +114,7 @@ Section scan.
       [apply IndexHead | assumption].
     * apply IndexTail;
       rewrite reduce_cons;
-      apply (index_map A_dec A_dec);
+      apply index_map;
       apply IH;
       assumption.
   Qed.
@@ -127,7 +127,7 @@ Section scan.
       (* We remember S n and jump through some hoops to start induction from 1. *)
       remember (S n) as m eqn:Eq;
       generalize dependent n;
-      induction m, xs as [ xs | m h xs IH ] using (arr_ind A_dec);
+      induction m, xs as [ xs | m h xs IH ] using arr_ind;
       intros n Eq;
       [discriminate | destruct n as [ | n ]];
       inversion Eq;
@@ -147,7 +147,7 @@ Section scan.
       inversion arr_eq;
       subst;
       split;
-      try apply (proof_irrelevance_arr A_dec);
+      try apply proof_irrelevance;
       reflexivity.
   Qed.
 
@@ -155,7 +155,7 @@ End scan.
 
 Section segm_scan.
 
-  Context {A : Type} {A_dec : forall x y : A, {x = y} + {x <> y}}.
+  Context {A : Type} `{Dec A}.
   Context (op : A -> A -> A) (ne : A).
   Context `{IsMonoid A op ne}.
 
@@ -165,10 +165,10 @@ Section segm_scan.
     (x_flag || y_flag, if y_flag then y else op x y).
 
   #[refine]
-  Instance segm_scan__monoid : IsMonoid (bool * A) (segm_scan__op) (false, ne) :=
+  Instance segm_scan__monoid : IsMonoid (bool * A) segm_scan__op (false, ne) :=
     {| munit_left  := fun m => _;
-      munit_right := fun m => _;
-      massoc      := fun m1 m2 m3 => _
+       munit_right := fun m => _;
+       massoc      := fun m1 m2 m3 => _
     |}.
   all:
     intros;
@@ -186,13 +186,7 @@ Section segm_scan.
   Defined.
   Check segm_scan__monoid.
 
-  Lemma bool_A_dec:
-    forall x y : bool * A, {x = y} + {x <> y}.
-  Proof.
-    unfold not in *; intros [[] x] [[] y]; specialize (A_dec x y) as [Eq|Eq]; subst;
-    (apply left; f_equal; reflexivity) + (apply right; inversion 1; auto).
-  Qed.
-
+  (* [Dec (bool * A)] is automatically resolved. *)
   Definition segm_scan {n : nat} (flags : [|n|]bool) (a : [|n|]A) : [|n|]A :=
     let zp := zip flags a in
     snd (unzip (scan segm_scan__op zp)).

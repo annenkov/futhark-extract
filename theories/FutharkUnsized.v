@@ -26,3 +26,6 @@ Proof. intros; reflexivity. Qed.
 Theorem reduce_monoid_homo_unit (A : Type) (op : A -> A -> A) (ne : A) `{IsMonoid A op ne} :
   reduce op ne [] = ne.
 Proof. reflexivity. Qed.
+
+(** For the filter function the [List.filter] function with the Lemmas
+    [filter_In] and [filter_app] can probably do. *)

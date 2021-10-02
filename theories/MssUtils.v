@@ -141,16 +141,7 @@ Qed.
 
 Definition X : Type := {x : Z * Z * Z * Z | P__X x }.
 
-Lemma X_proof_irrellevance:
-  forall x y : X, proj1_sig x = proj1_sig y -> x = y.
-Proof.
-  intros [] [];
-    simpl;
-    intros;
-    subst;
-    f_equal;
-    apply (UIP_dec Bool.bool_dec).
-Qed.
+Instance X_pi : PI P__X := PI_eq_dec.
 
 Ltac destruct_X_tuple x v pf :=
   destruct x as [v pf];
@@ -234,7 +225,7 @@ Instance X__monoid : IsMonoid X redOp X__unit :=
 (* TODO This is really slow. Is it because I do not help [lia] enough? *)  (* goal 8 slow *)
 all:
   intros;
-  apply X_proof_irrellevance;
+  apply proof_irrelevance;
   destruct_Xs;
   max_equiv_tac;
   split_tuple_eq_goal;
