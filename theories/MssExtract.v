@@ -57,10 +57,10 @@ Definition TT :=
   ; remap <%% Z.mul %%> "multI64"
 
   (* integer inequalities *)
-  ; remap <%% Z.leb %%> "lebI64"
-  ; remap <%% Z.ltb %%> "ltbI64"
-  ; remap <%% Z.geb %%> "gebI64"
-  ; remap <%% Z.gtb %%> "gtbI64"
+  ; remap <%% Z.leb %%> "leI64"
+  ; remap <%% Z.ltb %%> "ltI64"
+  ; remap <%% Z.geb %%> "geI64"
+  ; remap <%% Z.gtb %%> "gtI64"
 
   (* bools *)
   ; remap <%% bool %%> "bool"
@@ -80,7 +80,7 @@ Definition TT_ctors :=
   ; ("true", "true")
   ; ("false", "false")].
 
-Definition mss_prelude := (sig_defs ++ i64_ops)%string.
+Definition mss_prelude := StringExtra.lines [sig_defs; i64_ops].
 
 Module Unsized.
 
