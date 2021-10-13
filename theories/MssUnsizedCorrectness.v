@@ -16,15 +16,6 @@ Inductive Segment {A : Type} : list A -> list A -> Type :=
 | HeadSegment  : forall seg tail, Segment seg (seg ++ tail)
 | InnerSegment : forall prefix seg lst, Segment seg lst -> Segment seg (prefix ++ lst).
 
-#[refine]
-Instance sum__monoid : IsMonoid Z (fun x y => x + y) 0 :=
-  {| munit_left  := _;
-     munit_right := _;
-     massoc      := _
-  |}.
-all: lia.
-Qed.
-
 Definition sum (l : list Z) : Z :=
   reduce (fun x y => x + y) 0 l.
 
@@ -63,45 +54,38 @@ Ltac destruct_mss_cores :=
           end);
   destruct_Xs.
 
+Ltac solve_for_mss_cores :=
+  unfold mss in *;
+  repeat (rewrite mss_core_cons + rewrite mss_core_append);
+  replace (mss_core []) with (exist P__X (0, 0, 0, 0) eq_refl) by reflexivity;
+  destruct_mss_cores;
+  max_equiv_tac;
+  lia.
+
 Lemma mss_pos:
   forall l : list Z, 0 <= mss l.
 Proof.
-  intros l; unfold mss; induction l.
-  * simpl; reflexivity.
-  * rewrite mss_core_cons; destruct_mss_cores; max_equiv_tac; lia.
+  intros l; induction l; solve_for_mss_cores.
 Qed.
 
-(* tactic for proving various results about how [mss] behaves
-with respect to the append operation, via induction *)
-Ltac mss_append_induction :=
-  intros l1 l2; induction l1; simpl;
-  [ (* Solve base cases *)
-    apply Z.le_refl + apply mss_pos
-  | (* Solve general cases *)
-    unfold mss;
-    repeat rewrite mss_core_cons;
-    rewrite mss_core_append;
-    destruct_mss_cores;
-    repeat rewrite max_equiv;
-    lia
-  ].
-
 Lemma mss_app_right:
-  forall l1 l2 : list Z,  mss l1 <= mss (l1 ++ l2).
-Proof. mss_append_induction. Qed.
+  forall (n : Z) (l1 l2 : list Z),  n <= mss l1 -> n <= mss (l1 ++ l2).
+Proof.
+  intros n [] l2; solve_for_mss_cores.
+Qed.
 
 Lemma mss_app_left:
-  forall l1 l2 : list Z,  mss l2 <= mss (l1 ++ l2).
-Proof. mss_append_induction. Qed.
+  forall (n : Z) (l1 l2 : list Z),  n <= mss l2 -> n <= mss (l1 ++ l2).
+Proof.
+  intros n [] l2; solve_for_mss_cores.
+Qed.
 
 Lemma mss_core_sum:
   forall l : list Z,
     let '(_, _, _, s) := proj1_sig (mss_core l) in
     s = sum l.
 Proof.
-  intros l; induction l.
-  * simpl; reflexivity.
-  * rewrite mss_core_cons; destruct_mss_core l; lia.
+  intros l; induction l; solve_for_mss_cores.
 Qed.
 
 Lemma mss_core_left:
@@ -172,27 +156,20 @@ Qed.
 Lemma sum_vs_mss:
   forall l, sum l <= mss l.
 Proof.
-  intros l;
-  specialize (mss_core_sum l).
-  unfold mss;
-  destruct_mss_core l;
-  lia.
+  intros l; specialize (mss_core_sum l); solve_for_mss_cores.
 Qed.
 
-(* TODO Is this the right way of doing it? *)
 Local Hint Resolve mss_pos : core.
 Local Hint Resolve sum_vs_mss : core.
+Local Hint Resolve mss_app_left : core.
+Local Hint Resolve mss_app_right : core.
 
 Theorem mss_bound:
-  forall X Y : list Z, Segment X Y -> sum X <= mss Y.
-Proof.
-  induction 1; simpl.
-  * rewrite <- mss_app_right. eauto.
-  * rewrite <- mss_app_left; eauto.
-Qed.
+  forall (s l : list Z), Segment s l -> sum s <= mss l.
+Proof. induction 1; simpl; eauto. Qed.
 
 Theorem mss_attain:
-  forall l : list Z, exists s : list Z, exists pf : Segment s l,  sum s = mss l.
+  forall l : list Z, exists (s : list Z) (pf : Segment s l),  sum s = mss l.
 Proof.
   intros l;
   pose proof (mss_core_inner l) as H;
