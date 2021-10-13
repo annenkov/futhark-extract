@@ -78,8 +78,8 @@ Ltac split_tuple_eq_goal :=
           end.
 
 Definition X__cond (x : Z * Z * Z * Z) : bool :=
-  let '(x1, x2, x3, x4) := x in
-  (x2 <=? x1) && (x3 <=? x1) && (0 <=? x2) && (0 <=? x3) && (x4 <=? x2) && (x4 <=? x3).
+  let '(mss, mis, mcs, ts) := x in
+  (mis <=? mss) && (mcs <=? mss) && (0 <=? mis) && (0 <=? mcs) && (ts <=? mis) && (ts <=? mcs).
 
 Definition P__X (x : Z * Z * Z * Z) : Prop := X__cond x = true.
 
@@ -131,8 +131,8 @@ Ltac split_X_cond_goal :=
   repeat (apply Bool.andb_true_iff; split); apply Z.leb_le.
 
 Lemma X_cond_equiv:
-  forall x : Z * Z * Z * Z, P__X x <-> let '(x1, x2, x3, x4) := x in
-                  x2 <= x1 /\ x3 <= x1 /\ 0 <= x2 /\ 0 <= x3 /\ x4 <= x2 /\ x4 <= x3.
+  forall x : Z * Z * Z * Z, P__X x <-> let '(mss, mis, mcs, ts) := x in
+                  mis <= mss /\ mcs <= mss /\ 0 <= mis /\ 0 <= mcs /\ ts <= mis /\ ts <= mcs.
 Proof.
   intros; split; destruct_tuples; unfold P__X; unfold X__cond.
   * intros H; destruct_bool H; convert_ineqb_to_ineq; lia.
@@ -180,12 +180,12 @@ Ltac destruct_Xs :=
           end).
 
 (** operator for calculating the maximal segment sum with the reduce
-    operation. The tuple values, (x1, x2, x3, x4), should be understood as
+    operation. The tuple values, (mss, mis, mcs, ts), should be understood as
     follows:
-    - x1: maximal sum of a segment
-    - x2: maximal sum of a left bounding segment
-    - x3: maximal sum of a right bounding segment
-    - x4: the total sum of the elements
+    - mss: Maximal Segment Sum
+    - mis: Maximal Initial Sum (maximal sum of a left bounding segment)
+    - mcs: Maximal Closing Sum (maximal sum of a right bounding segment)
+    - ts:  Total Sum (of the elements of the array)
   *)
 Definition redOp_aux (x y : Z * Z * Z * Z) : Z * Z * Z * Z :=
   let '(mssx, misx, mcsx, tsx) := x in
@@ -210,10 +210,7 @@ Next Obligation.
 Qed.
 Check redOp.
 
-Program Definition X__unit : X := (Z0, Z0, Z0, Z0).
-Next Obligation.
-  simpl; unfold P__X; unfold X__cond; split_X_cond_goal; reflexivity.
-Qed.
+Definition X__unit : X := exist _ (Z0, Z0, Z0, Z0) eq_refl.
 Check X__unit.
 
 #[refine]
