@@ -137,20 +137,6 @@ Section scan.
       + apply (IH n); reflexivity.
   Qed.
 
-  (** TODO Maybe this should be moved to the Array Module *)
-  Lemma arr_cons_eq {n : nat}:
-    forall (x1 x2 : A) (xs1 xs2 : [|n|]A), x1 [::] xs1 = x2 [::] xs2 -> x1 = x2 /\ xs1 = xs2.
-  Proof.
-    intros ? ? [] [] arr_eq;
-      apply (f_equal proj1_sig) in arr_eq;
-      simpl in arr_eq;
-      inversion arr_eq;
-      subst;
-      split;
-      try apply proof_irrelevance;
-      reflexivity.
-  Qed.
-
 End scan.
 
 Section segm_scan.

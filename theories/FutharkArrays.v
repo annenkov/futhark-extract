@@ -10,6 +10,7 @@ Require Import Program.
 Require Import FutharkUtils.
 
 Declare Scope arr_scope.
+
 Open Scope arr_scope.
 Open Scope list_scope.
 
@@ -38,25 +39,34 @@ Notation "l1 [++] l2" := (append l1 l2) (at level 60) : arr_scope.
 Definition to_arr {A : Type} {n : nat} (l : list A) (len : #|l| = n) : [|n|]A :=
   exist (fun xs : list A => #|xs| = n) l len.
 
-Lemma arr_cons {A : Type}:
-  forall (n : nat) (arr : [|S n|]A), exists (h : A) (t : [|n|]A), proj1_sig arr = proj1_sig (h [::] t).
-Proof.
-  intros n;
-    induction n as [ | n IH ];
-    intros [[ | h t' ] len];
-    try discriminate.
-  * exists h; exists nil_arr; destruct t' as [ | h' t' ].
-      reflexivity.
-    discriminate.
-  * simpl in len;
-    assert (pf : #|t'| = S n) by lia;
-      exists h;
-      exists (to_arr t' pf);
-      reflexivity.
-Qed.
-
 Instance arr_pi {n : nat} {A : Type} : PI (fun xs : list A => #|xs| = n) := PI_eq_dec.
 Instance arr_dec {n : nat} {A : Type} `{Dec A} : Dec ([|n|]A) := sig_eq_dec.
+
+Lemma equal_arr_f:
+  forall (A B : Type) (f : forall {k : nat}, ([|k|]A) -> B) (n1 n2 : nat) (x1 : [|n1|]A) (x2 : [|n2|]A),
+    n1 = n2 -> proj1_sig x1 = proj1_sig x2 -> f x1 = f x2.
+Proof.
+  intros; apply functional_equality_sig; trivial; intros; apply arr_pi.
+Qed.
+
+Section equality.
+
+  Context {A : Type} `{Dec A}.
+
+  Lemma arr_cons_eq {n : nat}:
+    forall (x1 x2 : A) (xs1 xs2 : [|n|]A), x1 [::] xs1 = x2 [::] xs2 -> x1 = x2 /\ xs1 = xs2.
+  Proof.
+    intros ? ? [] [] arr_eq;
+      apply (f_equal (@proj1_sig _ _)) in arr_eq;
+      simpl in arr_eq;
+      inversion arr_eq;
+      subst;
+      split;
+      try apply proof_irrelevance;
+      reflexivity.
+  Qed.
+
+End equality.
 
 Section induction.
 
@@ -121,9 +131,43 @@ Ltac destruct_arrs :=
             => destruct k; [ destruct_nil_array a | destruct_nonnil_array a ]
           end.
 
+Section decons.
+
+  Context {A B : Type} `{Dec A}.
+  Variable f : forall {k : nat}, ([|k|]A) -> B.
+
+  Lemma arr_decons:
+    forall (n : nat) (arr : [|S n|]A), exists (h : A) (t : [|n|]A), f arr = f (h [::] t).
+  Proof.
+    intros n;
+      induction n as [ | n IH ];
+      intros [[ | h t' ] len];
+      try discriminate.
+    * exists h; exists nil_arr;
+      apply equal_arr_f; trivial; destruct t'; try discriminate; reflexivity.
+    * simpl in len;
+        assert (pf : #|t'| = S n) by lia;
+        exists h;
+        exists (to_arr t' pf);
+        apply equal_arr_f;
+        reflexivity.
+  Qed.
+
+End decons.
+
 Section cons_app.
 
   Context {A : Type} `{Dec A}.
+
+  Lemma cons_app_assoc_f {n1 n2 : nat} {B : Type}:
+    forall (h : A) (a1 : [|n1|]A) (a2 : [|n2|]A) (f : forall {n : nat}, ([|n|]A) -> B),
+      f ((h [::] a1) [++] a2) = f (h [::] (a1 [++] a2)).
+  Proof.
+    intros; apply functional_equality_sig.
+    - intros; apply arr_pi.
+    - lia.
+    - reflexivity.
+  Qed.
 
   Lemma cons_app_assoc {n1 n2 : nat}:
     forall (h : A) (a1 : [|n1|]A) (a2 : [|n2|]A), (h [::] a1) [++] a2 = h [::] (a1 [++] a2).

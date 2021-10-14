@@ -103,3 +103,14 @@ intros [x px] [y py];
 * apply left; apply proof_irrelevance; simpl; reflexivity.
 * apply right; unfold not; inversion 1; auto.
 Qed.
+
+Lemma functional_equality_sig {A B C : Type} {P : A -> B -> Prop}:
+    forall (pi : forall (a : A), PI (P a))
+    (f : forall {a : A}, sig (P a) -> C)
+    (a1 a2 : A)
+    (b1 : sig (P a1))
+    (b2 : sig (P a2)),
+    a1 = a2 -> proj1_sig b1 = proj1_sig b2 -> f b1 = f b2.
+Proof.
+  intros pi * H1 H2; subst; apply proof_irrelevance in H2; subst; reflexivity.
+Qed.
