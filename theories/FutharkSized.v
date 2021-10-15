@@ -105,7 +105,7 @@ Section scan.
       inversion pre;
       subst;
       simplify_arrays;
-      repeat rewrite list_cons_arr_cons;
+      repeat rewrite cons_convert_sig;
       rewrite scan__cons.
     * rewrite reduce_cons_nil;
       (** TODO The above rewrite leaves a [IsMonoid A op ne] goal, which I do

@@ -51,9 +51,9 @@ Qed.
 
 Section equality.
 
-  Context {A : Type} `{Dec A}.
+  Context {A : Type} `{Dec A} {n : nat}.
 
-  Lemma arr_cons_eq {n : nat}:
+  Lemma arr_cons_eq:
     forall (x1 x2 : A) (xs1 xs2 : [|n|]A), x1 [::] xs1 = x2 [::] xs2 -> x1 = x2 /\ xs1 = xs2.
   Proof.
     intros ? ? [] [] arr_eq;
@@ -68,31 +68,124 @@ Section equality.
 
 End equality.
 
+Section cons_rewrite.
+
+  Context {A : Type} `{Dec A} {n : nat}.
+
+  Lemma cons_convert_sig_len:
+    forall (h : A) (t : list A), #|h :: t| = S n -> #|t| = n.
+  Proof.
+    intros * len; inversion len; reflexivity.
+  Qed.
+
+  Lemma cons_convert:
+    forall (h : A) (t : list A) (len : #|h :: t| = S n),
+      exist (fun xs : list A => #|xs| = S n) (h :: t) len = h [::] (to_arr t (cons_convert_sig_len _ _ len)).
+  Proof.
+    intros; apply proof_irrelevance; reflexivity.
+  Qed.
+
+  Lemma cons_convert_sig:
+    forall (h : A) (arr : [|n|]A) (pf : #|h :: `arr| = S n),
+      exist (fun xs : list A => #|xs| = S n) (h :: `arr) pf = h [::] arr.
+  Proof.
+    intros; apply proof_irrelevance; reflexivity.
+  Qed.
+
+End cons_rewrite.
+
+Section decons.
+
+  Context {A : Type} `{Dec A}.
+
+  Lemma arr_decons:
+    forall (n : nat) (arr : [|S n|]A), exists (h : A) (t : [|n|]A), arr = h [::] t.
+  Proof.
+    intros n [[ |h t]].
+    * discriminate.
+    * rewrite cons_convert;
+      remember (to_arr t _) as t';
+      exists h; exists t'; reflexivity.
+  Qed.
+
+End decons.
+
+Ltac subst_arrs :=
+  repeat let xs := fresh in
+          let H  := fresh in
+          match goal with
+          | xs : [|_|]_, H : proj1_sig ?xs = proj1_sig _ |- _
+            => apply proof_irrelevance in H; subst xs
+          end.
+
+Ltac arr_decons_tac xs :=
+  let n  := fresh "n" in
+  let f  := fresh "f" in
+  let h  := fresh "h" in
+  let t  := fresh "t" in
+  match goal with
+  | xs : [|S ?n|]_ |- context[?xs]
+    => pose proof (arr_decons n xs) as [h [t ?]]; subst xs
+  end.
+
+Section destruct.
+
+  Context {A : Type} `{Dec A}.
+
+  Variable P : forall {n : nat} (arr : [|n|]A), Prop.
+  Hypothesis nil_case  : forall (arr : [|0|]A), P arr.
+  Hypothesis cons_case : forall (n : nat) (a : A) (arr : [|n|]A), P (a [::] arr).
+
+  Lemma arr_dest:
+      forall (n : nat) (arr : [|n|]A), P arr.
+  Proof.
+    intros [] xs; destruct xs as [[ | h t ] ?]; try discriminate.
+    * apply nil_case.
+    * rewrite cons_convert; apply cons_case.
+  Qed.
+
+End destruct.
+
 Section induction.
 
   Context {A : Type} `{Dec A}.
 
+  Variable P : forall {n : nat} (arr : [|n|]A), Prop.
+  Hypothesis base_case : forall (arr : [|0|]A), P arr.
+  Hypothesis ind_case  : forall (n : nat) (a : A) (arr : [|n|]A), P arr -> P (a [::] arr).
+
   Lemma arr_ind:
-  forall (P : forall (n : nat) (arr : [|n|]A), Prop),
-    (forall (arr : [|0|]A), P 0 arr)
-      -> (forall (n : nat) (a : A) (arr : [|n|]A), P n arr -> P (S n) (a [::] arr))
-      -> forall (n : nat) (arr : [|n|]A), P n arr.
+    forall (n : nat) (arr : [|n|]A), P arr.
   Proof.
-    intros P bCase iCase n arr; induction n as [ | n IH ].
-    * apply bCase.
-    * destruct arr as [[ |h t] len__arr].
+    intros n; induction n as [ | n IH ].
+    * apply base_case.
+    * destruct arr as [[ | h t ] ?].
       + discriminate.
-      + simpl in len__arr;
-          injection len__arr as len__t;
-          specialize (iCase n h (exist (fun xs : list A => #|xs| = n) t len__t));
-          replace (exist (fun xs : list A => #|xs| = S n) (h :: t) len__arr)
-            with (h [::] exist (fun xs : list A => #|xs| = n) t len__t)
-            by (apply proof_irrelevance; reflexivity);
-          apply iCase;
-          apply IH.
+      + rewrite cons_convert; apply ind_case; apply IH.
   Qed.
 
 End induction.
+
+Section indeuction_S.
+
+  Context {A : Type} `{Dec A}.
+
+  Variable P : forall {n : nat} (arr : [|S n|]A), Prop.
+  Hypothesis base_case : forall (a : A) (arr : [|0|]A), P (a [::] arr).
+  Hypothesis ind_case  : forall (a : A) (n : nat) (arr : [|S n|]A), P arr -> P (a [::] arr).
+
+  Lemma arr_ind_S:
+    forall (n : nat) (arr : [|S n|]A), P arr.
+  Proof.
+    intros n;
+      induction n as [ | n IH ];
+      intros arr;
+      arr_decons_tac arr.
+    * apply base_case.
+    * apply ind_case; apply IH.
+  Qed.
+
+End indeuction_S.
 
 Ltac destruct_nil_array a :=
   let h := fresh "h" in
@@ -131,34 +224,15 @@ Ltac destruct_arrs :=
             => destruct k; [ destruct_nil_array a | destruct_nonnil_array a ]
           end.
 
-Section decons.
-
-  Context {A B : Type} `{Dec A}.
-  Variable f : forall {k : nat}, ([|k|]A) -> B.
-
-  Lemma arr_decons:
-    forall (n : nat) (arr : [|S n|]A), exists (h : A) (t : [|n|]A), f arr = f (h [::] t).
-  Proof.
-    intros n;
-      induction n as [ | n IH ];
-      intros [[ | h t' ] len];
-      try discriminate.
-    * exists h; exists nil_arr;
-      apply equal_arr_f; trivial; destruct t'; try discriminate; reflexivity.
-    * simpl in len;
-        assert (pf : #|t'| = S n) by lia;
-        exists h;
-        exists (to_arr t' pf);
-        apply equal_arr_f;
-        reflexivity.
-  Qed.
-
-End decons.
+(* TODO Maybe you can get rid of these tactics. *)
 
 Section cons_app.
 
   Context {A : Type} `{Dec A}.
 
+  (* The reasons for having the function [f] in the statement, is because the
+     arguments to f have different types, namely, the types [[|(S n1) + n2|]A]
+     and [[|S (n1 + n2)|]A] which are not equal. *)
   Lemma cons_app_assoc_f {n1 n2 : nat} {B : Type}:
     forall (h : A) (a1 : [|n1|]A) (a2 : [|n2|]A) (f : forall {n : nat}, ([|n|]A) -> B),
       f ((h [::] a1) [++] a2) = f (h [::] (a1 [++] a2)).
@@ -188,26 +262,6 @@ Section cons_app.
     forall (l1 : [|0|]A) (n : nat) (l2 : [|n|]A), l1 [++] l2 = l2.
   Proof.
     intros [[]] *; apply proof_irrelevance; simpl; (reflexivity + discriminate).
-  Qed.
-
-  Lemma list_cons_arr_cons_len {n : nat}:
-    forall (h : A) (t : list A), #|h :: t| = S n -> #|t| = n.
-  Proof.
-    intros * len; inversion len; reflexivity.
-  Qed.
-
-  Lemma list_cons_to_arr_cons {n : nat}:
-    forall (h : A) (t : list A) (len : #|h :: t| = S n),
-      exist (fun xs : list A => #|xs| = S n) (h :: t) len = h [::] (to_arr t (list_cons_arr_cons_len _ _ len)).
-  Proof.
-    intros; apply proof_irrelevance; reflexivity.
-  Qed.
-
-  Lemma list_cons_arr_cons:
-    forall (n : nat) (h : A) (arr : [|n|]A) (pf : #|h :: `arr| = S n),
-      exist (fun xs : list A => #|xs| = S n) (h :: `arr) pf = h [::] arr.
-  Proof.
-    intros; apply proof_irrelevance; reflexivity.
   Qed.
 
   (** TODO You do not use it yet, but there are several places where you
@@ -391,7 +445,7 @@ Section map.
       destruct_arrs;
       inversion cond;
       subst;
-      rewrite list_cons_arr_cons in *;
+      rewrite cons_convert_sig in *;
       rewrite map_cons.
     * apply IndexHead.
     * apply IndexTail; apply IH; assumption.
@@ -409,7 +463,7 @@ Section map.
       simplify_arrays;
       subst;
       try (apply PrefixEmpty);
-      rewrite 2 list_cons_arr_cons;
+      rewrite 2 cons_convert_sig;
       rewrite 2 map_cons;
       apply PrefixHead;
       apply IH;
@@ -466,6 +520,6 @@ End ziping.
             match goal with
             | |- context[exist (fun xs : list ?T => #|xs| = S ?n) (?h :: ?t) ?len]
               => remember (exist (fun xs : list T => #|xs| = S n) (h :: t) len) as a eqn:Eq;
-                rewrite list_cons_to_arr_cons in Eq;
+                rewrite cons_convert in Eq;
                 subst a
             end).
