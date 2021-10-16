@@ -7,8 +7,10 @@ theories/FutharkExamples.v
 theories/FutharkUtils.v
 theories/FutharkArrays.v
 
+theories/FutharkMod.v
+theories/FutharkModImpl.v
+
 theories/FutharkUnsized.v
-theories/FutharkSized.v
 
 theories/MssUtils.v
 

@@ -11,6 +11,17 @@ Require Import FutharkUtils.
 Open Scope bool_scope.
 Open Scope Z.
 
+Create HintDb mss.
+
+Ltac mauto :=
+  repeat (
+      progress autounfold with futhark
+      + (progress autounfold with mss)
+      + (progress autorewrite with futhark)
+      + (progress autorewrite with mss)
+      + (progress auto with futhark)
+      + (progress auto with mss)).
+
 Definition max (x y : Z) : Z :=
   if x >? y then x else y.
 
@@ -21,22 +32,19 @@ Proof.
     destruct (x ?= y) eqn:H; try apply Z.compare_eq_iff in H;
     subst; reflexivity.
 Qed.
+Hint Rewrite max_equiv : futhark.
 
 Ltac max_equiv_tac := repeat rewrite max_equiv in *.
 
 Lemma max_add_right:
   forall a b c : Z, max a b + c = max (a + c) (b + c).
 Proof. intros; max_equiv_tac; lia. Qed.
+Hint Rewrite max_add_right : futhark.
 
 Lemma max_add_left:
   forall a b c : Z, a + max b c = max (a + b) (a + c).
 Proof. intros; max_equiv_tac; lia. Qed.
-
-(* TODO I do not use this I think, so I should remove it. *)
-Ltac max_add_normalize :=
-  repeat rewrite max_add_right in *;
-  repeat rewrite max_add_left in *;
-  repeat rewrite Z.add_assoc in *.
+Hint Rewrite max_add_left : futhark.
 
 Ltac destruct_ands H :=
   let C1 := fresh "C" in

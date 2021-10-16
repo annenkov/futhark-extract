@@ -17,7 +17,7 @@ Import ListNotations.
 
 Require FutharkArrays.
 Require FutharkUnsized.
-Require FutharkSized.
+Require FutharkModImpl.
 Require MssUnsizedDefinition.
 Require MssSizedDefinition.
 
@@ -87,6 +87,8 @@ Module Unsized.
   Import FutharkUnsized.
   Import MssUnsizedDefinition.
 
+  Import FutharkImpl.
+
   Definition TT_extra :=
     [ remap <%% @reduce %%> "reduce"
     ; remap <%% @map %%> "map"
@@ -95,7 +97,8 @@ Module Unsized.
   Definition test_input := [1; -2; 3; 4; -1; 5; -6; 1].
   Definition test_output := 11.
 
-  Example mss_test : mss test_input = test_output. reflexivity. Qed.
+  Example mss_test : mss test_input = test_output.
+  unfold test_input; unfold mss; unfold mss_core; fauto. Qed.
 
   Definition futhark_mss_test :=
     {| FTname := "Maximum segment sum test"
@@ -112,9 +115,11 @@ End Unsized.
 
 Module Sized.
 
-  Import FutharkSized.
+  Import FutharkModImpl.
   Import FutharkArrays.
   Import MssSizedDefinition.
+
+  Import FutharkImpl.
 
   Definition TT_extra :=
     [ remap <%% @reduce %%> "reduce"
@@ -124,7 +129,7 @@ Module Sized.
   Definition test_input := to_arr [1; -2; 3; 4; -1; 5; -6; 1] eq_refl.
   Definition test_output := 11.
 
-  Example mss_test : mss test_input = test_output. reflexivity. Qed.
+  (* Example mss_test : mss test_input = test_output. *)
 
   Definition futhark_mss_test :=
     {| FTname := "Maximum segment sum test"

@@ -4,6 +4,8 @@ From Coq Require Import List.
 Require Import MssUtils.
 Require Import FutharkUnsized.
 
+Import FutharkImpl.
+
 Definition mss_core (xs : list Z) : X :=
   reduce redOp X__unit (map mapOp xs).
 

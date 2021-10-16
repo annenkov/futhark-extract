@@ -25,7 +25,7 @@ Program Definition cons {A : Type} {n : nat} (a : A) (l : [|n|]A) : [|S n|]A :=
   a :: l.
 Check cons.
 
-Notation "a [::] l" := (cons a l) (at level 60) : arr_scope.
+Notation "a [::] l" := (cons a l) (at level 60, right associativity) : arr_scope.
 
 Program Definition append {A : Type} {n1 n2 : nat} (l1 : [|n1|]A) (l2 : [|n2|]A) : [|n1 + n2|]A :=
   l1 ++ l2.
@@ -34,7 +34,7 @@ Next Obligation.
 Defined.
 Check append.
 
-Notation "l1 [++] l2" := (append l1 l2) (at level 60) : arr_scope.
+Notation "l1 [++] l2" := (append l1 l2) (at level 60, right associativity) : arr_scope.
 
 Definition to_arr {A : Type} {n : nat} (l : list A) (len : #|l| = n) : [|n|]A :=
   exist (fun xs : list A => #|xs| = n) l len.
@@ -53,6 +53,12 @@ Section equality.
 
   Context {A : Type} `{Dec A} {n : nat}.
 
+  Lemma nil_eq:
+    forall (xs : [|0|]A), xs = nil_arr.
+  Proof.
+    intros [[]]; apply proof_irrelevance; discriminate + reflexivity.
+  Qed.
+
   Lemma arr_cons_eq:
     forall (x1 x2 : A) (xs1 xs2 : [|n|]A), x1 [::] xs1 = x2 [::] xs2 -> x1 = x2 /\ xs1 = xs2.
   Proof.
@@ -67,6 +73,12 @@ Section equality.
   Qed.
 
 End equality.
+
+Ltac nil_eq_tac :=
+  repeat let xs := fresh "xs" in
+          match goal with
+          | xs : [|0%nat|]_ |- _ => pose proof (nil_eq xs); subst xs
+          end.
 
 Section cons_rewrite.
 
@@ -137,7 +149,7 @@ Section destruct.
   Hypothesis cons_case : forall (n : nat) (a : A) (arr : [|n|]A), P (a [::] arr).
 
   Lemma arr_dest:
-      forall (n : nat) (arr : [|n|]A), P arr.
+    forall (n : nat) (arr : [|n|]A), P arr.
   Proof.
     intros [] xs; destruct xs as [[ | h t ] ?]; try discriminate.
     * apply nil_case.

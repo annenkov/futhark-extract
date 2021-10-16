@@ -4,9 +4,11 @@ From Coq Require Import ZArith.
 
 Require Import FutharkArrays.
 Require Import FutharkUtils.
-Require Import FutharkSized.
+Require Import FutharkModImpl.
 Require Import MssUtils.
 Require Import MssSizedDefinition.
+
+Import FutharkImpl.
 
 Open Scope Z.
 
@@ -20,31 +22,39 @@ Inductive Segment {A : Type} : forall (n1 n2 : nat), ([|n1|]A) -> ([|n2|]A) -> P
 | SegmentInner : forall (n1 n2 : nat) (h : A) (l1 : [|n1|]A) (l2 : [|n2|]A),
     Segment n1 n2 l1 l2 -> Segment n1 (S n2) l1 (h [::] l2).
 
+Hint Constructors Segment : futhark.
+
 Definition sum {n : nat} (l : [|n|]Z) : Z :=
   reduce (fun x y => x + y) 0 l.
+
+Lemma sum_nil:
+  forall (l : [|0%nat|]Z), sum l = 0.
+Proof.
+  intros; unfold sum; mauto.
+  (* intros; nil_eq_tac; unfold sum; fauto. *)
+Qed.
+Hint Rewrite sum_nil : mss.
 
 Lemma sum_cons:
   forall (n : nat) (a : Z) (l : [|n|]Z), sum (a [::] l) = a + sum l.
 Proof.
-  unfold sum; intros; rewrite reduce_cons; reflexivity.
+  intros; unfold sum; mauto.
 Qed.
 Hint Rewrite sum_cons : mss.
 
-Definition sum_list (l : list Z) : Z :=
-  fold_right (fun x y => x + y) 0 l.
-
-Lemma sum_form {n : nat}:
-  forall l : [|n|]Z, sum l = sum_list (proj1_sig l).
+Lemma mss_core_nil:
+  forall (t : [|0%nat|]Z),
+    mss_core t = exist P__X (0, 0, 0, 0) eq_refl.
 Proof.
-  intros l; induction n, l using arr_ind; autorewrite with mss; reflexivity.
+  intros; unfold mss_core; mauto.
 Qed.
-Hint Rewrite @sum_form : mss.
+Hint Rewrite @mss_core_nil : mss.
 
 Lemma mss_core_cons {n : nat}:
   forall (h : Z) (t : [|n|]Z),
     mss_core (h [::] t) = redOp (mapOp h) (mss_core t).
 Proof.
-  intros; unfold mss_core; reflexivity.
+  intros; unfold mss_core; mauto.
 Qed.
 Hint Rewrite @mss_core_cons : mss.
 
@@ -78,8 +88,9 @@ Lemma mss_cons_r {n : nat}:
   forall (h : Z) (l : [|n|]Z),
     mss l <= mss (h [::] l).
 Proof.
-  intros; unfold mss; rewrite mss_core_cons; solve_for_mss_cores.
+  intros; unfold mss; mauto; solve_for_mss_cores.
 Qed.
+Hint Rewrite @mss_cons_r : mss.
 
 Hint Resolve Z.add_0_r : mss.
 
@@ -88,10 +99,9 @@ Lemma mss_core_left {n : nat}:
     let '(_, x2, _, _) := proj1_sig (mss_core l) in
     exists (n' : nat) (l' : [|n'|]Z), Prefix n' n l' l /\ sum l' = x2.
 Proof.
-  intros l; induction n, l using arr_ind; simplify_arrays.
-  * exists 0%nat; exists nil_arr; split; [ apply PrefixEmpty | auto ].
-  * autorewrite with mss;
-    destruct_mss_core l;
+  intros l; induction n, l using arr_ind; mauto; simpl.
+  * exists 0%nat. exists nil_arr; split; mauto.
+  * destruct_mss_core l;
     (* We split up into tree case and solve these separately *)
     match goal with
     | |- context[max (max ?head 0) (?head + ?x4)]
@@ -104,20 +114,12 @@ Proof.
         subst
     end.
     + (* CASE M = 0 *)
-      exists 0%nat; exists nil_arr; split.
-      - apply PrefixEmpty.
-      - auto.
+      exists 0%nat; exists nil_arr; split; mauto.
     + (* CASE M = a *)
-      exists 1%nat; exists (a [::] nil_arr);
-        autorewrite with mss;
-        split.
-        - apply PrefixHead; apply PrefixEmpty.
-        - simpl; auto with mss.
+      exists 1%nat; exists (a [::] nil_arr); split; mauto; simpl; mauto.
     + (* CASE M = a + e3 *)
       specialize IHl as [n1 [l1 [Happend Hsum]]];
-        exists (S n1); exists (a [::] l1); split.
-        - apply PrefixHead; apply Happend.
-        - rewrite sum_cons; rewrite Hsum; reflexivity.
+        subst; exists (S n1); exists (a [::] l1); split; mauto.
 Qed.
 
 Lemma mss_core_inner {n : nat}:
@@ -127,12 +129,11 @@ Lemma mss_core_inner {n : nat}:
 Proof.
   intros l;
     induction n, l as [l|n h l IH] using arr_ind;
-    simplify_arrays.
-  * exists 0%nat; exists nil_arr; split.
-    - apply SegmentHead; apply PrefixEmpty.
-    - auto.
+    mauto;
+    destruct_mss_cores;
+    simpl.
+  * exists 0%nat; exists nil_arr; split; mauto.
   * specialize (mss_core_left l) as Hleft;
-    rewrite mss_core_cons;
     destruct_mss_core l;
     specialize IH as [n' [l' [Hsegment Hsum]]];
     rewrite max_add_right;
@@ -149,31 +150,13 @@ Proof.
         subst
     end.
     + (* CASE M = x1 *)
-      exists n'; exists l'; split.
-      - apply SegmentInner; assumption.
-      - reflexivity.
+      exists n'; exists l'; split; mauto.
     + (* CASE M = h *)
-      exists 1%nat; exists (h [::] nil_arr); split.
-      - apply SegmentHead; apply PrefixHead; apply PrefixEmpty.
-      - autorewrite with mss; simpl; auto with mss.
+      exists 1%nat; exists (h [::] nil_arr); split; mauto; simpl; mauto.
     + (* CASE M = h + x4 *)
       specialize Hleft as [n'' [l'' [Hprefix Hsum]]];
-        exists (S n''); exists (h [::] l'');
-          split.
-      - apply SegmentHead; apply PrefixHead; assumption.
-      - rewrite sum_cons; rewrite Hsum; reflexivity.
-Qed.
-
-(** TODO this should be moved next to the induction principle. *)
-Lemma arr_dest {A : Type} (A_dec : forall x y : A, {x = y} + {x <> y}):
-  forall (P : forall (n : nat) (arr : [|n|]A), Prop),
-    (forall (arr : [|0%nat|]A), P 0%nat arr)
-      -> (forall (n : nat) (a : A) (arr : [|n|]A), P (S n) (a [::] arr))
-      -> forall (n : nat) (arr : [|n|]A), P n arr.
-Proof.
-  intros P Cnil Ccons n arr;
-    induction n, arr using arr_ind;
-    [ apply Cnil | apply Ccons].
+        destruct_tuple_eqs; subst;
+          exists (S n''); exists (h [::] l''); split; mauto.
 Qed.
 
 Theorem mss_bound {n1 n2 : nat}:
@@ -182,19 +165,13 @@ Proof.
   intros l1 l2 HSeg;
     induction HSeg as [n1 n2 l1 l2 HPre| ].
   * assert (lem :  let '(x1, x2, x3, x4) := proj1_sig (mss_core l2) in sum l1 <= x2). {
-      induction HPre;
-        simplify_arrays.
-      + destruct_mss_cores; autorewrite with mss; simpl; auto with mss.
-      + rewrite mss_core_cons;
-          rewrite sum_cons;
-          solve_for_mss_cores.
+      induction HPre; mauto; solve_for_mss_cores.
     }
     unfold mss;
-      solve_for_mss_cores.
-  * apply (Z.le_trans _ (mss l2)).
-    + assumption.
-    + apply mss_cons_r.
+    mauto; solve_for_mss_cores.
+  * apply (Z.le_trans _ (mss l2)); mauto; apply Z.le_refl.
 Qed.
+Hint Resolve mss_bound : mss.
 
 Theorem mss_attain:
   forall (n2 : nat) (l2 : [|n2|]Z), exists (n1 : nat) (l1 : [|n1|]Z) (pf : Segment n1 n2 l1 l2), sum l1 = mss l2.
@@ -205,8 +182,6 @@ Proof.
   destruct_mss_core l2;
   specialize H as [n1 [l1 [HSeg Hsum]]];
   subst;
-  exists n1;
-  exists l1;
-  exists HSeg;
+  exists n1; exists l1; exists HSeg;
   reflexivity.
 Qed.

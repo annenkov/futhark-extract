@@ -2,7 +2,9 @@ From Coq Require Import ZArith.
 
 Require Import MssUtils.
 Require Import FutharkArrays.
-Require Import FutharkSized.
+Require Import FutharkModImpl.
+
+Import FutharkImpl.
 
 Definition mss_core {n : nat} (xs : [|n|]Z) : X :=
   reduce redOp X__unit (map mapOp xs).
