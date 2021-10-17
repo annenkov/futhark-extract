@@ -45,12 +45,7 @@ Class Dec (A : Type) : Type :=
 
 #[refine]
 Instance Z_dec : Dec Z := { dec := _ }.
-  intros;
-    unfold not;
-    pose proof (Z_dec x y) as [[Eq | Eq] | Eq];
-    [apply right | apply right | apply left];
-    lia.
-Qed.
+repeat decide equality. Qed.
 
 Instance from_dec {A : Type} (d : forall x y : A, {x = y} + {x <> y}) : Dec A :=
   { dec := d }.
@@ -61,29 +56,12 @@ Instance nat_dec  : Dec nat := from_dec Nat.eq_dec.
 #[refine]
 Instance list_dec {A : Type} `{Dec A} : Dec (list A) :=
   { dec := _ }.
-intros xs;
-  induction xs as [ | x xs IH ];
-  intros [ | y ys ].
-* left; reflexivity.
-* right; discriminate.
-* right; discriminate.
-* specialize (dec x y) as [hEq | hEq];
-  unfold not;
-  specialize (IH ys) as [tEq | tEq];
-  subst;
-  (apply left; reflexivity) + (apply right; intros z; injection z; trivial).
-Qed.
+decide equality; apply dec. Qed.
 
 #[refine]
 Instance Tuple_dec {A B : Type} `{Dec A} `{Dec B} : Dec (A * B) :=
   { dec := _ }.
-unfold not;
-  intros [x1 x2] [y1 y2];
-  specialize (dec x1 y1) as [Eq1 | Eq1];
-  specialize (dec x2 y2) as [Eq2 | Eq2];
-  subst;
-  (apply left; reflexivity) + (apply right; inversion 1; auto).
-Qed.
+decide equality; apply dec. Qed.
 
 Class PI {A : Type} (P : A -> Prop) : Prop :=
   { proof_irrelevance : forall x y : sig P, proj1_sig x = proj1_sig y -> x = y }.
