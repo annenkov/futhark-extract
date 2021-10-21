@@ -140,24 +140,6 @@ Ltac arr_decons_tac xs :=
     => pose proof (arr_decons n xs) as [h [t ?]]; subst xs
   end.
 
-Section destruct.
-
-  Context {A : Type} `{Dec A}.
-
-  Variable P : forall {n : nat} (arr : [|n|]A), Prop.
-  Hypothesis nil_case  : forall (arr : [|0|]A), P arr.
-  Hypothesis cons_case : forall (n : nat) (a : A) (arr : [|n|]A), P (a [::] arr).
-
-  Lemma arr_dest:
-    forall (n : nat) (arr : [|n|]A), P arr.
-  Proof.
-    intros [] xs; destruct xs as [[ | h t ] ?]; try discriminate.
-    * apply nil_case.
-    * rewrite cons_convert; apply cons_case.
-  Qed.
-
-End destruct.
-
 Section induction.
 
   Context {A : Type} `{Dec A}.
@@ -177,6 +159,22 @@ Section induction.
   Qed.
 
 End induction.
+
+Section destruct.
+
+  Context {A : Type} `{Dec A}.
+
+  Variable P : forall {n : nat} (arr : [|n|]A), Prop.
+  Hypothesis nil_case  : forall (arr : [|0|]A), P arr.
+  Hypothesis cons_case : forall (n : nat) (a : A) (arr : [|n|]A), P (a [::] arr).
+
+  Lemma arr_dest:
+    forall (n : nat) (arr : [|n|]A), P arr.
+  Proof.
+    intros n arr; induction n, arr using arr_ind; auto.
+  Qed.
+
+End destruct.
 
 Section indeuction_S.
 
