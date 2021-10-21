@@ -94,7 +94,7 @@ Module FutharkMod (F : FutharkSpec).
       forall (xs : [|0|]A), map f xs = nil_arr.
     Proof.
       intros xs;
-        apply proof_irrelevance;
+        apply subset_eq;
         destruct (map f xs) as [[]];
         reflexivity + discriminate.
     Qed.

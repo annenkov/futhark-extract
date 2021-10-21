@@ -63,32 +63,35 @@ Instance Tuple_dec {A B : Type} `{Dec A} `{Dec B} : Dec (A * B) :=
   { dec := _ }.
 decide equality; apply dec. Qed.
 
-Class PI {A : Type} (P : A -> Prop) : Prop :=
-  { proof_irrelevance : forall x y : sig P, proj1_sig x = proj1_sig y -> x = y }.
+Class SigEq {A : Type} (P : A -> Prop) : Prop :=
+  { subset_eq : forall x y : sig P, proj1_sig x = proj1_sig y -> x = y }.
 
 #[refine]
-Instance PI_eq_dec {A B : Type} `{Dec B} {f g : A -> B} : PI (fun x => f x = g x) :=
-  { proof_irrelevance := _ }.
+Instance SigEq_dec {A B : Type} `{Dec B} {f g : A -> B} : SigEq (fun x => f x = g x) :=
+  { subset_eq := _ }.
 intros [x px] [y py]; simpl; intros; subst; f_equal; apply (UIP_dec dec).
 Qed.
 
 #[refine]
-Instance sig_eq_dec {A : Type} {P : A -> Prop} `{Dec A} `{PI A P} : Dec (sig P) :=
+Instance sig_dec {A : Type} {P : A -> Prop} `{Dec A} `{SigEq A P} : Dec (sig P) :=
   { dec := _ }.
 intros [x px] [y py];
   specialize (dec x y) as [];
   subst.
-* apply left; apply proof_irrelevance; simpl; reflexivity.
+* apply left; apply subset_eq; simpl; reflexivity.
 * apply right; unfold not; inversion 1; auto.
 Qed.
 
-Lemma functional_equality_sig {A B C : Type} {P : A -> B -> Prop}:
-    forall (pi : forall (a : A), PI (P a))
-    (f : forall {a : A}, sig (P a) -> C)
-    (a1 a2 : A)
-    (b1 : sig (P a1))
-    (b2 : sig (P a2)),
-    a1 = a2 -> proj1_sig b1 = proj1_sig b2 -> f b1 = f b2.
+(** A result that helps in dealing with situations where heterogeneous equality
+    might seem needed. Instead of assuming [JMeq_eq] we can prove that, after a
+    function application, elements of equal "dependent subset types" are equal *)
+Lemma heterog_subset_eq_f {D X Y : Type} {P : D -> X -> Prop}:
+    forall (sigeq : forall (d : D), SigEq (P d))
+      (f : forall {d : D}, sig (P d) -> Y)
+      (d1 d2 : D)
+      (x1 : sig (P d1))
+      (x2 : sig (P d2)),
+    d1 = d2 -> proj1_sig x1 = proj1_sig x2 -> f x1 = f x2.
 Proof.
-  intros pi * H1 H2; subst; apply proof_irrelevance in H2; subst; reflexivity.
+  intros pi * H1 H2; subst; apply subset_eq in H2; subst; reflexivity.
 Qed.

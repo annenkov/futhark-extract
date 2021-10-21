@@ -39,14 +39,14 @@ Notation "l1 [++] l2" := (append l1 l2) (at level 60, right associativity) : arr
 Definition to_arr {A : Type} {n : nat} (l : list A) (len : #|l| = n) : [|n|]A :=
   exist (fun xs : list A => #|xs| = n) l len.
 
-Instance arr_pi {n : nat} {A : Type} : PI (fun xs : list A => #|xs| = n) := PI_eq_dec.
-Instance arr_dec {n : nat} {A : Type} `{Dec A} : Dec ([|n|]A) := sig_eq_dec.
+Instance arr_sigeq {n : nat} {A : Type} : SigEq (fun xs : list A => #|xs| = n) := SigEq_dec.
+Instance arr_dec {n : nat} {A : Type} `{Dec A} : Dec ([|n|]A) := sig_dec.
 
 Lemma equal_arr_f:
   forall (A B : Type) (f : forall {k : nat}, ([|k|]A) -> B) (n1 n2 : nat) (x1 : [|n1|]A) (x2 : [|n2|]A),
     n1 = n2 -> proj1_sig x1 = proj1_sig x2 -> f x1 = f x2.
 Proof.
-  intros; apply functional_equality_sig; trivial; intros; apply arr_pi.
+  intros; apply heterog_subset_eq_f; trivial; intros; apply arr_sigeq.
 Qed.
 
 Section equality.
@@ -56,7 +56,7 @@ Section equality.
   Lemma nil_eq:
     forall (xs : [|0|]A), xs = nil_arr.
   Proof.
-    intros [[]]; apply proof_irrelevance; discriminate + reflexivity.
+    intros [[]]; apply subset_eq; discriminate + reflexivity.
   Qed.
 
   Lemma arr_cons_eq:
@@ -68,7 +68,7 @@ Section equality.
       inversion arr_eq;
       subst;
       split;
-      try apply proof_irrelevance;
+      try apply subset_eq;
       reflexivity.
   Qed.
 
@@ -94,14 +94,14 @@ Section cons_rewrite.
     forall (h : A) (t : list A) (len : #|h :: t| = S n),
       exist (fun xs : list A => #|xs| = S n) (h :: t) len = h [::] (to_arr t (cons_convert_sig_len _ _ len)).
   Proof.
-    intros; apply proof_irrelevance; reflexivity.
+    intros; apply subset_eq; reflexivity.
   Qed.
 
   Lemma cons_convert_sig:
     forall (h : A) (arr : [|n|]A) (pf : #|h :: `arr| = S n),
       exist (fun xs : list A => #|xs| = S n) (h :: `arr) pf = h [::] arr.
   Proof.
-    intros; apply proof_irrelevance; reflexivity.
+    intros; apply subset_eq; reflexivity.
   Qed.
 
 End cons_rewrite.
@@ -127,7 +127,7 @@ Ltac subst_arrs :=
           let H  := fresh in
           match goal with
           | xs : [|_|]_, H : proj1_sig ?xs = proj1_sig _ |- _
-            => apply proof_irrelevance in H; subst xs
+            => apply subset_eq in H; subst xs
           end.
 
 Ltac arr_decons_tac xs :=
@@ -224,7 +224,7 @@ Ltac simplify_arrays :=
           | a1 : [|0|]_    |- _ => destruct_nil_array a1
           | a1 : [|S ?k|]_ |- _ => destruct_nonnil_array a1
           | a1 : [|?k|]?T, a2 : [|?k|]?T, H : proj1_sig ?a1 = proj1_sig ?a2 |- _
-            => apply proof_irrelevance in H; subst a1
+            => apply subset_eq in H; subst a1
           end.
 
 Ltac destruct_arrs :=
@@ -249,8 +249,8 @@ Section cons_app.
     forall (h : A) (a1 : [|n1|]A) (a2 : [|n2|]A) (f : forall {n : nat}, ([|n|]A) -> B),
       f ((h [::] a1) [++] a2) = f (h [::] (a1 [++] a2)).
   Proof.
-    intros; apply functional_equality_sig.
-    - intros; apply arr_pi.
+    intros; apply heterog_subset_eq_f.
+    - intros; apply arr_sigeq.
     - lia.
     - reflexivity.
   Qed.
@@ -259,7 +259,7 @@ Section cons_app.
     forall (h : A) (a1 : [|n1|]A) (a2 : [|n2|]A), (h [::] a1) [++] a2 = h [::] (a1 [++] a2).
   Proof.
     intros h a1 a2;
-      apply proof_irrelevance;
+      apply subset_eq;
       destruct_arrs;
       reflexivity.
   Qed.
@@ -267,13 +267,13 @@ Section cons_app.
   Lemma cons_app_singleton {n : nat}:
     forall (h : A) (t : [|n|]A), h [::] t = to_arr [h] eq_refl [++] t.
   Proof.
-    intros; apply proof_irrelevance; reflexivity.
+    intros; apply subset_eq; reflexivity.
   Qed.
 
   Lemma app_nil:
     forall (l1 : [|0|]A) (n : nat) (l2 : [|n|]A), l1 [++] l2 = l2.
   Proof.
-    intros [[]] *; apply proof_irrelevance; simpl; (reflexivity + discriminate).
+    intros [[]] *; apply subset_eq; simpl; (reflexivity + discriminate).
   Qed.
 
   (** TODO You do not use it yet, but there are several places where you
@@ -357,7 +357,7 @@ Section indexing.
       match goal with
         (* the case where we reduce to indexing into the tail. *)
       | |- safe_index i ?_pf1' ?xs1 = safe_index i ?_pf2' ?xs2
-        => replace xs1 with xs2; [apply IH | apply proof_irrelevance; reflexivity]
+        => replace xs1 with xs2; [apply IH | apply subset_eq; reflexivity]
         (* the rest of the cases. *)
       | |- _ => lia + reflexivity
       end.
@@ -368,7 +368,7 @@ Section indexing.
       proj1_sig xs1 = proj1_sig xs2 -> safe_index i pf1 xs1 = safe_index i pf2 xs2.
   Proof.
     intros i n xs1 xs2 pf1 pf2 cond;
-      replace xs2 with xs1 by (apply proof_irrelevance; assumption);
+      replace xs2 with xs1 by (apply subset_eq; assumption);
       apply safe_index_pi.
   Qed.
 
@@ -423,13 +423,13 @@ Section map.
   Lemma map_empty:
     forall (f : A -> B) (xs : [|0|]A), map f xs = nil_arr.
   Proof.
-    intros; simplify_arrays; apply proof_irrelevance; reflexivity.
+    intros; simplify_arrays; apply subset_eq; reflexivity.
   Qed.
 
   Lemma map_cons {n : nat}:
     forall (f : A -> B) (x : A) (xs : [|n|]A), map f (x [::] xs) = f x [::] map f xs.
   Proof.
-    intros; apply proof_irrelevance; reflexivity.
+    intros; apply subset_eq; reflexivity.
   Qed.
 
   Lemma map_app {n1 n2 : nat}:

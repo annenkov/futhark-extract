@@ -50,7 +50,7 @@ Module FutharkSpecImpl : FutharkSpec.
   Lemma map_cons {n : nat}:
     forall (f : A -> B) (x : A) (xs : [|n|]A), map f (x [::] xs) = f x [::] map f xs.
   Proof.
-    intros; apply proof_irrelevance; reflexivity.
+    intros; apply subset_eq; reflexivity.
   Qed.
 
   End map_obligations.
@@ -81,17 +81,17 @@ Module FutharkSpecImpl : FutharkSpec.
         scan op ne (x [::] xs) = x [::] map (op x) (scan op ne xs).
     Proof.
       intros;
-        apply proof_irrelevance;
+        apply subset_eq;
         simpl;
         repeat f_equal;
-        apply proof_irrelevance;
+        apply subset_eq;
         reflexivity.
     Qed.
 
     Theorem scan_nil:
       forall xs : [|0|]A, scan op ne xs = nil_arr.
     Proof.
-      intros [[]]; apply proof_irrelevance; discriminate + reflexivity.
+      intros [[]]; apply subset_eq; discriminate + reflexivity.
     Qed.
 
   End scan_obligations.

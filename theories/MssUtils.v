@@ -149,7 +149,7 @@ Qed.
 
 Definition X : Type := {x : Z * Z * Z * Z | P__X x }.
 
-Instance X_pi : PI P__X := PI_eq_dec.
+Instance X_pi : SigEq P__X := SigEq_dec.
 
 Ltac destruct_X_tuple x v pf :=
   destruct x as [v pf];
@@ -230,7 +230,7 @@ Instance X__monoid : IsMonoid X redOp X__unit :=
 (* TODO This is really slow. Is it because I do not help [lia] enough? *)  (* goal 8 slow *)
 all:
   intros;
-  apply proof_irrelevance;
+  apply subset_eq;
   destruct_Xs;
   max_equiv_tac;
   split_tuple_eq_goal;
