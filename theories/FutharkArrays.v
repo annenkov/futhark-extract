@@ -18,8 +18,7 @@ Notation "#| l |" := (List.length l) (at level 0, l at level 99, format "#| l |"
 
 Notation "[| n |] A" := ({ xs : list A | #|xs| = n }) (at level 100) : arr_scope.
 
-#[program] Definition nil_arr {A : Type} : [|0|]A :=
-  exist (fun xs : list A => #|xs| = 0) [] _.
+Definition nil_arr {A : Type} : [|0|]A := exist _ [] eq_refl.
 
 Program Definition cons {A : Type} {n : nat} (a : A) (l : [|n|]A) : [|S n|]A :=
   a :: l.
@@ -74,12 +73,6 @@ Section equality.
 
 End equality.
 
-Ltac nil_eq_tac :=
-  repeat let xs := fresh "xs" in
-          match goal with
-          | xs : [|0%nat|]_ |- _ => pose proof (nil_eq xs); subst xs
-          end.
-
 Section cons_rewrite.
 
   Context {A : Type} `{Dec A} {n : nat}.
@@ -110,16 +103,6 @@ Section decons.
 
   Context {A : Type} `{Dec A}.
 
-  Lemma arr_decons:
-    forall (n : nat) (arr : [|S n|]A), exists (h : A) (t : [|n|]A), arr = h [::] t.
-  Proof.
-    intros n [[ |h t]].
-    * discriminate.
-    * rewrite cons_convert;
-      remember (to_arr t _) as t';
-      exists h; exists t'; reflexivity.
-  Qed.
-
 End decons.
 
 Ltac subst_arrs :=
@@ -128,31 +111,23 @@ Ltac subst_arrs :=
           match goal with
           | xs : [|_|]_, H : proj1_sig ?xs = proj1_sig _ |- _
             => apply subset_eq in H; subst xs
+          | xs : [|_|]_, H : proj1_sig _ = proj1_sig ?xs |- _
+            => apply subset_eq in H; subst xs
           end.
-
-Ltac arr_decons_tac xs :=
-  let n  := fresh "n" in
-  let f  := fresh "f" in
-  let h  := fresh "h" in
-  let t  := fresh "t" in
-  match goal with
-  | xs : [|S ?n|]_ |- context[?xs]
-    => pose proof (arr_decons n xs) as [h [t ?]]; subst xs
-  end.
 
 Section induction.
 
   Context {A : Type} `{Dec A}.
 
   Variable P : forall {n : nat} (arr : [|n|]A), Prop.
-  Hypothesis base_case : forall (arr : [|0|]A), P arr.
+  Hypothesis base_case : P nil_arr.
   Hypothesis ind_case  : forall (n : nat) (a : A) (arr : [|n|]A), P arr -> P (a [::] arr).
 
   Lemma arr_ind:
     forall (n : nat) (arr : [|n|]A), P arr.
   Proof.
     intros n; induction n as [ | n IH ].
-    * apply base_case.
+    * intros arr; assert (arr = nil_arr) by apply nil_eq; subst; apply base_case.
     * destruct arr as [[ | h t ] ?].
       + discriminate.
       + rewrite cons_convert; apply ind_case; apply IH.
@@ -176,23 +151,49 @@ Section destruct.
 
 End destruct.
 
+Section decons.
+
+  Context {A : Type} `{Dec A}.
+
+  Lemma arr_decons:
+    forall (n : nat) (arr : [|S n|]A), exists (h : A) (t : [|n|]A), arr = h [::] t.
+  Proof.
+    intros n [[ |h t]].
+    * discriminate.
+    * rewrite cons_convert;
+      remember (to_arr t _) as t';
+      exists h; exists t'; reflexivity.
+  Qed.
+
+  Variable P : forall {n : nat} (arr : [|S n|]A), Prop.
+  Hypothesis decons : forall (n : nat) (a : A) (arr : [|n|]A), P (a [::] arr).
+
+  Lemma decons_dest:
+    forall (n : nat) (arr : [|S n|]A), P arr.
+  Proof.
+    intros n arr; pose proof (arr_decons n arr) as [h [t]]; subst; auto.
+  Qed.
+
+End decons.
+
 Section indeuction_S.
 
   Context {A : Type} `{Dec A}.
 
   Variable P : forall {n : nat} (arr : [|S n|]A), Prop.
-  Hypothesis base_case : forall (a : A) (arr : [|0|]A), P (a [::] arr).
+  Hypothesis base_case : forall (a : A), P (a [::] nil_arr).
   Hypothesis ind_case  : forall (a : A) (n : nat) (arr : [|S n|]A), P arr -> P (a [::] arr).
 
   Lemma arr_ind_S:
     forall (n : nat) (arr : [|S n|]A), P arr.
   Proof.
-    intros n;
-      induction n as [ | n IH ];
-      intros arr;
-      arr_decons_tac arr.
-    * apply base_case.
-    * apply ind_case; apply IH.
+    intros n arr;
+      destruct n, arr as [n h t] using decons_dest;
+      generalize dependent h;
+      induction n, t using arr_ind;
+      intros.
+    + apply base_case.
+    + apply ind_case; auto.
   Qed.
 
 End indeuction_S.
@@ -214,27 +215,16 @@ Ltac destruct_nonnil_array a :=
 
 Ltac simplify_arrays :=
   repeat let a1 := fresh "a" in
-          let a2 := fresh "a" in
-          let k := fresh "k" in
-          let T := fresh "T" in
-          let H := fresh "H" in
-          match goal with
-          | a1 : [|0|]_    |- _ => destruct_nil_array a1
-          | a1 : [|S ?k|]_ |- _ => destruct_nonnil_array a1
-          | a1 : [|?k|]?T, a2 : [|?k|]?T, H : proj1_sig ?a1 = proj1_sig ?a2 |- _
-            => apply subset_eq in H; subst a1
-          end.
-
-Ltac destruct_arrs :=
-  simplify_arrays;
-  repeat let a := fresh "a" in
-          let k := fresh "k" in
-          match goal with
-          | a : [|?k|]_ |- _
-            => destruct k; [ destruct_nil_array a | destruct_nonnil_array a ]
-          end.
-
-(* TODO Maybe you can get rid of these tactics. *)
+         let a2 := fresh "a" in
+         let k := fresh "k" in
+         let T := fresh "T" in
+         let H := fresh "H" in
+         match goal with
+         | a1 : [|0|]_    |- _ => rewrite (nil_eq a1)
+         | a1 : [|S ?k|]_ |- _ => destruct k, a1 using decons_dest
+         | a1 : [|?k|]?T, a2 : [|?k|]?T, H : proj1_sig ?a1 = proj1_sig ?a2 |- _
+           => apply subset_eq in H; subst a1
+         end.
 
 Section cons_app.
 
@@ -258,7 +248,7 @@ Section cons_app.
   Proof.
     intros h a1 a2;
       apply subset_eq;
-      destruct_arrs;
+      destruct n1, a1 using arr_dest;
       reflexivity.
   Qed.
 
@@ -274,14 +264,7 @@ Section cons_app.
     intros [[]] *; apply subset_eq; simpl; (reflexivity + discriminate).
   Qed.
 
-  (** TODO You do not use it yet, but there are several places where you
-      should maybe use it, I think. *)
-  Lemma lt_S_n: forall n m : nat, S n < S m -> n < m.
-  Proof. intros; lia. Qed.
-
-  (** TODO Figure out if you use it. *)
   Lemma nil_app:
-    (* forall (n : nat) (l1 : [|n|]A) (l2 : [|0|]A), l1 [++] l2 = l1. *)
     forall (n : nat) (l1 : [|n|]A) (l2 : [|0|]A), proj1_sig (l1 [++] l2) = proj1_sig l1.
   Proof.
     intros n l1 [[]]; simpl; (apply app_nil_r + discriminate).
@@ -434,7 +417,7 @@ Section map.
     forall (f : A -> B) (xs1 : [|n1|]A) (xs2 : [|n2|]A), map f (xs1 [++] xs2) = map f xs1 [++] map f xs2.
   Proof.
     intros f xs1;
-      induction n1, xs1 as [xs1 | n1 h1 t1 IH] using arr_ind;
+      induction n1, xs1 as [ | n1 h1 t1 IH] using arr_ind;
       intros;
       simpl.
     * rewrite map_empty; rewrite 2 app_nil; reflexivity.
@@ -452,10 +435,9 @@ Section map.
     intros f i;
       induction i as [ | i IH ];
       intros n a xs cond;
-      destruct_arrs;
+      destruct n, xs using arr_dest;
       inversion cond;
-      subst;
-      rewrite cons_convert_sig in *;
+      simplify_arrays;
       rewrite map_cons.
     * apply IndexHead.
     * apply IndexTail; apply IH; assumption.
@@ -465,19 +447,14 @@ Section map.
     forall (f : A -> B) (l n : nat) (p : [|l|]A) (xs : [|n|]A),
       Prefix l n p xs -> Prefix l n (map f p) (map f xs).
   Proof.
-    intros f l;
-      induction l as [ | l IH ];
-      intros [ | n] p xs cond;
-      destruct_arrs;
+    intros f l n p;
+      generalize dependent n;
+      induction l, p as [ |l h p IH] using arr_ind;
+      intros n xs cond;
       inversion cond;
-      simplify_arrays;
-      subst;
-      try (apply PrefixEmpty);
-      rewrite 2 cons_convert_sig;
-      rewrite 2 map_cons;
-      apply PrefixHead;
-      apply IH;
-      assumption.
+      simplify_arrays.
+    * apply PrefixEmpty.
+    * rewrite 2 map_cons; apply PrefixHead; apply IH; assumption.
   Qed.
 
 End map.

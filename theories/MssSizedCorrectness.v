@@ -128,7 +128,7 @@ Lemma mss_core_inner {n : nat}:
     exists (n' : nat) (l' : [|n'|]Z), Segment n' n l' l /\ sum l' = x1.
 Proof.
   intros l;
-    induction n, l as [l|n h l IH] using arr_ind;
+    induction n, l as [ |n h l IH] using arr_ind;
     mauto;
     destruct_mss_cores;
     simpl.
