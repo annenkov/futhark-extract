@@ -246,12 +246,23 @@ Section indexing.
 
   Context {A : Type} `{Dec A}.
 
-  Inductive Index : forall (i n : nat) (a : A) (xs : [|n|]A), Prop :=
-  | IndexHead : forall (k : nat) (a : A) (t : [|k|]A), Index 0 (S k) a (a [::] t)
-  | IndexTail : forall (i k : nat) (a h : A) (t : [|k|]A), Index i k a t -> Index (S i) (S k) a (h [::] t).
+  Inductive Index : forall {n : nat} (i : nat) (a : A) (xs : [|n|]A), Prop :=
+  | IndexHead : forall {k : nat} (a : A) (t : [|k|]A), Index 0 a (a [::] t)
+  | IndexTail : forall {k : nat} (i : nat) (a h : A) (t : [|k|]A), Index i a t -> Index (S i) a (h [::] t).
+
+  Inductive Prefix : forall {l n : nat} (p : [|l|]A) (xs : [|n|]A), Prop :=
+  | PrefixEmpty : forall {k : nat} (xs : [|k|]A), Prefix nil_arr xs
+  | PrefixHead  : forall {l k : nat} (h : A) (p : [|l|]A) (xs : [|k|]A),
+                      Prefix p xs -> Prefix (h [::] p) (h [::] xs).
+
+  Inductive Segment : forall {n1 n2 : nat}, ([|n1|]A) -> ([|n2|]A) -> Prop :=
+  | SegmentHead : forall {n1 n2 : nat} (l1 : [|n1|]A) (l2 : [|n2|]A),
+      Prefix l1 l2 -> Segment l1 l2
+  | SegmentInner : forall {n1 n2 : nat} (h : A) (l1 : [|n1|]A) (l2 : [|n2|]A),
+      Segment l1 l2 -> Segment l1 (h [::] l2).
 
   Lemma index_len_rel:
-    forall (i n : nat) (x : A) (xs : [|n|]A), Index i n x xs -> i < n.
+    forall (i n : nat) (x : A) (xs : [|n|]A), Index i x xs -> i < n.
   Proof.
     intros i n x xs;
       generalize dependent x;
@@ -264,11 +275,6 @@ Section indexing.
     * apply Nat.lt_0_succ.
     * specialize (IHxs i x); apply lt_n_S; auto.
   Qed.
-
-  Inductive Prefix : forall (l n : nat) (p : [|l|]A) (xs : [|n|]A), Prop :=
-  | PrefixEmpty : forall (k : nat) (empty : [|0|]A) (xs : [|k|]A), Prefix 0 k empty xs
-  | PrefixHead  : forall (h : A) (l k : nat) (p : [|l|]A) (xs : [|k|]A) ,
-                      Prefix l k p xs -> Prefix (S l) (S k) (h [::] p) (h [::] xs).
 
   #[program] Fixpoint safe_index {n : nat} (i : nat) (pf : i < n) (xs : [|n|]A) : A :=
     match xs, i, n with
@@ -341,7 +347,7 @@ Section indexing.
 
   Lemma safe_index_correct:
     forall (i n : nat) (x : A) (xs : [|n|]A) (pf : i < n),
-      Index i n x xs -> safe_index i pf xs = x.
+      Index i x xs -> safe_index i pf xs = x.
   Proof.
     intros i n x xs;
       generalize dependent x;

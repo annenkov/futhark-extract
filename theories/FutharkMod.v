@@ -109,6 +109,7 @@ Module FutharkMod (F : FutharkSpec).
 
   Hint Constructors Index : futhark.
   Hint Constructors Prefix : futhark.
+  Hint Constructors Segment : futhark.
 
   Ltac fauto :=
     repeat progress (autorewrite with futhark; auto with futhark).
@@ -125,7 +126,7 @@ Module FutharkMod (F : FutharkSpec).
         destruct (map f xs) as [[]];
         reflexivity + discriminate.
     Qed.
-    Hint Resolve map_nil : futhark.
+    Hint Rewrite map_nil : futhark.
 
     Lemma map_app {n1 n2 : nat}:
       forall (xs1 : [|n1|]A) (xs2 : [|n2|]A),
@@ -142,21 +143,21 @@ Module FutharkMod (F : FutharkSpec).
 
     Lemma map_index:
       forall (i n : nat) (a : A) (xs : [|n|]A),
-        Index i n a xs -> Index i n (f a) (map f xs).
+        Index i a xs -> Index i (f a) (map f xs).
     Proof.
       induction 1; fauto.
     Qed.
 
     Lemma map_prefix:
       forall (i n : nat) (p : [|i|]A) (xs : [|n|]A),
-        Prefix i n p xs -> Prefix i n (map f p) (map f xs).
+        Prefix p xs -> Prefix (map f p) (map f xs).
     Proof.
       induction 1; fauto.
     Qed.
 
   End map.
 
-  Hint Resolve map_nil : futhark.
+  Hint Rewrite @map_nil : futhark.
   Hint Rewrite @map_app : futhark.
   Hint Resolve map_index : futhark.
   Hint Resolve map_prefix : futhark.
@@ -187,7 +188,7 @@ Module FutharkMod (F : FutharkSpec).
 
     Theorem scan_index {i n : nat}:
       forall (p : [|S i|]A) (xs : [|n|]A),
-        Prefix (S i) n p xs -> Index i n (reduce op ne p) (scan op ne xs).
+        Prefix p xs -> Index i (reduce op ne p) (scan op ne xs).
     Proof.
       intros p;
         generalize dependent n;
@@ -199,7 +200,7 @@ Module FutharkMod (F : FutharkSpec).
     Qed.
 
     Corollary scan_last:
-      forall (n : nat) (xs : [|S n|]A), Index n (S n) (reduce op ne xs) (scan op ne xs).
+      forall (n : nat) (xs : [|S n|]A), Index n (reduce op ne xs) (scan op ne xs).
     Proof.
       intros n xs; apply scan_index; induction n, xs using arr_ind_S; auto with futhark.
     Qed.

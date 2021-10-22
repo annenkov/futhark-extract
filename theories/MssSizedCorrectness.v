@@ -12,18 +12,6 @@ Import FutharkImpl.
 
 Open Scope Z.
 
-(** TODO The types [Segment] and [Prefix] should maybe be moved to the Arrays
-module. *)
-
-(** From this point we prove functional correctness of the [mss] function*)
-Inductive Segment {A : Type} : forall (n1 n2 : nat), ([|n1|]A) -> ([|n2|]A) -> Prop :=
-| SegmentHead : forall (n1 n2 : nat) (l1 : [|n1|]A) (l2 : [|n2|]A),
-    Prefix n1 n2 l1 l2 -> Segment n1 n2 l1 l2
-| SegmentInner : forall (n1 n2 : nat) (h : A) (l1 : [|n1|]A) (l2 : [|n2|]A),
-    Segment n1 n2 l1 l2 -> Segment n1 (S n2) l1 (h [::] l2).
-
-Hint Constructors Segment : futhark.
-
 Definition sum {n : nat} (l : [|n|]Z) : Z :=
   reduce (fun x y => x + y) 0 l.
 
@@ -31,7 +19,6 @@ Lemma sum_nil:
   forall (l : [|0%nat|]Z), sum l = 0.
 Proof.
   intros; unfold sum; mauto.
-  (* intros; nil_eq_tac; unfold sum; fauto. *)
 Qed.
 Hint Rewrite sum_nil : mss.
 
@@ -97,7 +84,7 @@ Hint Resolve Z.add_0_r : mss.
 Lemma mss_core_left {n : nat}:
   forall l : [|n|]Z,
     let '(_, x2, _, _) := proj1_sig (mss_core l) in
-    exists (n' : nat) (l' : [|n'|]Z), Prefix n' n l' l /\ sum l' = x2.
+    exists (n' : nat) (l' : [|n'|]Z), Prefix l' l /\ sum l' = x2.
 Proof.
   intros l; induction n, l using arr_ind; mauto; simpl.
   * exists 0%nat. exists nil_arr; split; mauto.
@@ -125,7 +112,7 @@ Qed.
 Lemma mss_core_inner {n : nat}:
   forall l : [|n|]Z,
     let '(x1, _, _, _) := proj1_sig (mss_core l) in
-    exists (n' : nat) (l' : [|n'|]Z), Segment n' n l' l /\ sum l' = x1.
+    exists (n' : nat) (l' : [|n'|]Z), Segment l' l /\ sum l' = x1.
 Proof.
   intros l;
     induction n, l as [ |n h l IH] using arr_ind;
@@ -160,7 +147,7 @@ Proof.
 Qed.
 
 Theorem mss_bound {n1 n2 : nat}:
-  forall (l1 : [|n1|]Z) (l2 : [|n2|]Z), Segment n1 n2 l1 l2 -> sum l1 <= mss l2.
+  forall (l1 : [|n1|]Z) (l2 : [|n2|]Z), Segment l1 l2 -> sum l1 <= mss l2.
 Proof.
   intros l1 l2 HSeg;
     induction HSeg as [n1 n2 l1 l2 HPre| ].
@@ -174,7 +161,9 @@ Qed.
 Hint Resolve mss_bound : mss.
 
 Theorem mss_attain:
-  forall (n2 : nat) (l2 : [|n2|]Z), exists (n1 : nat) (l1 : [|n1|]Z) (pf : Segment n1 n2 l1 l2), sum l1 = mss l2.
+  forall (n2 : nat) (l2 : [|n2|]Z),
+  exists (n1 : nat) (l1 : [|n1|]Z) (pf : Segment l1 l2),
+    sum l1 = mss l2.
 Proof.
   intros n2 l2;
   pose proof (mss_core_inner l2) as H;
