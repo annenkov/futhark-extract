@@ -22,7 +22,6 @@ Definition nil_arr {A : Type} : [|0|]A := exist _ [] eq_refl.
 
 Program Definition cons {A : Type} {n : nat} (a : A) (l : [|n|]A) : [|S n|]A :=
   a :: l.
-Check cons.
 
 Notation "a [::] l" := (cons a l) (at level 60, right associativity) : arr_scope.
 
@@ -31,7 +30,6 @@ Program Definition append {A : Type} {n1 n2 : nat} (l1 : [|n1|]A) (l2 : [|n2|]A)
 Next Obligation.
   rewrite app_length; trivial.
 Defined.
-Check append.
 
 Notation "l1 [++] l2" := (append l1 l2) (at level 60, right associativity) : arr_scope.
 
@@ -198,21 +196,6 @@ Section indeuction_S.
 
 End indeuction_S.
 
-Ltac destruct_nil_array a :=
-  let h := fresh "h" in
-  let t := fresh "t" in
-  let len := fresh "len" in
-  destruct a as [[ | h t ] len]; [ simpl in len | discriminate len ].
-
-(** TODO maybe this should not do what it does, but rather what
-    [list_cons_intro_arr_cons] does. However, this creates a problme with the
-    order. *)
-Ltac destruct_nonnil_array a :=
-  let h := fresh "h" in
-  let t := fresh "t" in
-  let len := fresh "len" in
-  destruct a as [[ | h t ] len]; [ discriminate len | simpl in len ].
-
 Ltac simplify_arrays :=
   repeat let a1 := fresh "a" in
          let a2 := fresh "a" in
@@ -229,19 +212,6 @@ Ltac simplify_arrays :=
 Section cons_app.
 
   Context {A : Type} `{Dec A}.
-
-  (* The reasons for having the function [f] in the statement, is because the
-     arguments to f have different types, namely, the types [[|(S n1) + n2|]A]
-     and [[|S (n1 + n2)|]A] which are not equal. *)
-  Lemma cons_app_assoc_f {n1 n2 : nat} {B : Type}:
-    forall (h : A) (a1 : [|n1|]A) (a2 : [|n2|]A) (f : forall {n : nat}, ([|n|]A) -> B),
-      f ((h [::] a1) [++] a2) = f (h [::] (a1 [++] a2)).
-  Proof.
-    intros; apply heterog_subset_eq_f.
-    - intros; apply arr_sigeq.
-    - lia.
-    - reflexivity.
-  Qed.
 
   Lemma cons_app_assoc {n1 n2 : nat}:
     forall (h : A) (a1 : [|n1|]A) (a2 : [|n2|]A), (h [::] a1) [++] a2 = h [::] (a1 [++] a2).
@@ -324,7 +294,6 @@ Section indexing.
   Next Obligation.
     unfold not; split; intros * [? []]; discriminate.
   Defined.
-  Check safe_index.
 
   Lemma safe_index_pi:
     forall (i n : nat) (xs : [|n|]A) (pf1 pf2 : i < n),
@@ -390,123 +359,3 @@ Section indexing.
   Qed.
 
 End indexing.
-
-Section map.
-
-  Context {A B : Type} `{Dec A} `{Dec B}.
-
-  Program Definition map {n : nat} (f : A -> B) (l : [|n|]A) : [|n|]B :=
-    List.map f l.
-  Next Obligation.
-    rewrite List.map_length; reflexivity.
-  Defined.
-
-  Lemma map_empty:
-    forall (f : A -> B) (xs : [|0|]A), map f xs = nil_arr.
-  Proof.
-    intros; simplify_arrays; apply subset_eq; reflexivity.
-  Qed.
-
-  Lemma map_cons {n : nat}:
-    forall (f : A -> B) (x : A) (xs : [|n|]A), map f (x [::] xs) = f x [::] map f xs.
-  Proof.
-    intros; apply subset_eq; reflexivity.
-  Qed.
-
-  Lemma map_app {n1 n2 : nat}:
-    forall (f : A -> B) (xs1 : [|n1|]A) (xs2 : [|n2|]A), map f (xs1 [++] xs2) = map f xs1 [++] map f xs2.
-  Proof.
-    intros f xs1;
-      induction n1, xs1 as [ | n1 h1 t1 IH] using arr_ind;
-      intros;
-      simpl.
-    * rewrite map_empty; rewrite 2 app_nil; reflexivity.
-    * rewrite cons_app_assoc;
-        rewrite 2 map_cons;
-        rewrite cons_app_assoc;
-        f_equal;
-        apply IH.
-  Qed.
-
-  Lemma index_map:
-    forall (f : A -> B) (i n : nat) (a : A) (xs : [|n|]A),
-      Index i n a xs -> Index i n (f a) (map f xs).
-  Proof.
-    intros f i;
-      induction i as [ | i IH ];
-      intros n a xs cond;
-      destruct n, xs using arr_dest;
-      inversion cond;
-      simplify_arrays;
-      rewrite map_cons.
-    * apply IndexHead.
-    * apply IndexTail; apply IH; assumption.
-  Qed.
-
-  Lemma prefix_map:
-    forall (f : A -> B) (l n : nat) (p : [|l|]A) (xs : [|n|]A),
-      Prefix l n p xs -> Prefix l n (map f p) (map f xs).
-  Proof.
-    intros f l n p;
-      generalize dependent n;
-      induction l, p as [ |l h p IH] using arr_ind;
-      intros n xs cond;
-      inversion cond;
-      simplify_arrays.
-    * apply PrefixEmpty.
-    * rewrite 2 map_cons; apply PrefixHead; apply IH; assumption.
-  Qed.
-
-End map.
-
-Section ziping.
-
-  Context {A B : Type} `{Dec A} `{Dec B}.
-
-  Program Fixpoint unzip {n : nat} (l : [|n|](A * B)) : ([|n|]A) * ([|n|]B) :=
-    split l.
-  Solve Obligations with (intros n [];
-                        simpl;
-                        (rewrite split_length_l + rewrite split_length_r);
-                        assumption).
-  Check unzip.
-
-  #[local]
-  Obligation Tactic := try now program_simpl.
-
-  Program Fixpoint zip {n : nat} (a : [|n|]A) (b : [|n|]B) : [|n|](A * B) :=
-    combine a b.
-  Next Obligation.
-    intros n [? len1] [? len2];
-      simpl;
-      rewrite combine_length;
-      rewrite len1;
-      rewrite len2;
-      lia.
-  Defined.
-  Check zip.
-
-End ziping.
-
-  (** TODO You can also match were ?t is not a list, but already the
-      projection of an array, and then apply the result directly, or when it
-      is a complex expression, and then you just remember it first. *)
-  (** TODO Also, maybe this should not be necessary if you have used induction
-      principles and such properly. *)
-  Ltac list_cons_intro_arr_cons :=
-    repeat (let T := fresh "T" in
-            let n := fresh "n" in
-            let h := fresh "h" in
-            let t := fresh "t" in
-            let x := fresh "x" in
-            let y := fresh "y" in
-            let xs := fresh "xs" in
-            let len := fresh "len" in
-            let a := fresh "a" in
-            let Eq := fresh "Eq" in
-            match goal with
-            | |- context[exist (fun xs : list ?T => #|xs| = S ?n) (?h :: ?t) ?len]
-              => remember (exist (fun xs : list T => #|xs| = S n) (h :: t) len) as a eqn:Eq;
-                rewrite cons_convert in Eq;
-                subst a
-            end).

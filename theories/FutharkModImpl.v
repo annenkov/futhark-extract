@@ -1,4 +1,4 @@
-(* From Coq Require Import Lia. *)
+From Coq Require Import Lia.
 From Coq Require Import List.
 
 (* Import ListNotations. *)
@@ -42,6 +42,27 @@ Module FutharkSpecImpl : FutharkSpec.
   Next Obligation.
     unfold not; split; intros * []; discriminate.
   Defined.
+
+  Section zip_definition.
+
+    #[local]
+    Obligation Tactic := try now program_simpl.
+
+    Program Definition zip
+            {A B : Type} `{Dec A} `{Dec B} {n : nat}
+            (a : [|n|]A) (b : [|n|]B) : [|n|](A * B) :=
+      combine a b.
+    Next Obligation.
+      intros A B _ _ ? [] []; simpl; rewrite combine_length; lia.
+    Defined.
+
+  End zip_definition.
+
+  Program Definition unzip {A B : Type} `{Dec A} `{Dec B} {n : nat}
+            (l : [|n|](A * B)) : ([|n|]A) * ([|n|]B) :=
+    split l.
+  Next Obligation. apply split_length_r. Qed.
+  Next Obligation. apply split_length_l. Qed.
 
   Section map_obligations.
 
@@ -95,6 +116,37 @@ Module FutharkSpecImpl : FutharkSpec.
     Qed.
 
   End scan_obligations.
+
+  Section ziping_obligation.
+
+    Context {A B : Type} `{Dec A} `{Dec B} {n : nat}.
+
+    Variable x : A.
+    Variable y : B.
+
+    Theorem zip_cons:
+      forall (xs : [|n|]A) (ys : [|n|]B),
+        zip (x [::] xs) (y [::] ys) = (x, y) [::] zip xs ys.
+    Proof.
+      intros; apply subset_eq; reflexivity.
+    Qed.
+
+    Theorem unzip_cons:
+      forall (es : [|n|](A * B)),
+        let '(xs, ys) := unzip es in
+        unzip ((x, y) [::] es) = (x [::] xs, y [::] ys).
+    Proof.
+      intros [l];
+        unfold unzip;
+        simpl;
+        f_equal;
+        apply subset_eq;
+        simpl;
+        destruct (split l);
+        reflexivity.
+    Qed.
+
+  End ziping_obligation.
 
 End FutharkSpecImpl.
 

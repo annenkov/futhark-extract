@@ -23,6 +23,14 @@ Module Type FutharkSpec.
     forall {A : Type} `{Dec A} (op : A -> A -> A) (ne : A) `{IsMonoid A op ne}
       {n : nat} (xs : [|n|]A), [|n|]A.
 
+  Parameter zip:
+    forall {A B : Type} `{Dec A} `{Dec B} {n : nat}
+      (a : [|n|]A) (b : [|n|]B), [|n|](A * B).
+
+  Parameter unzip:
+    forall {A B : Type} `{Dec A} `{Dec B} {n : nat}
+      (l : [|n|](A * B)), ([|n|]A) * ([|n|]B).
+
   Section map_axioms.
 
     Context {A B : Type} {n : nat} (f : A -> B).
@@ -56,6 +64,24 @@ Module Type FutharkSpec.
 
   End scan_axioms.
 
+  Section ziping_axioms.
+
+    Context {A B : Type} `{Dec A} `{Dec B} {n : nat}.
+
+    Variable x : A.
+    Variable y : B.
+
+    Axiom zip_cons:
+      forall (xs : [|n|]A) (ys : [|n|]B),
+        zip (x [::] xs) (y [::] ys) = (x, y) [::] zip xs ys.
+
+    Axiom unzip_cons:
+      forall (es : [|n|](A * B)),
+        let '(xs, ys) := unzip es in
+        unzip ((x, y) [::] es) = (x [::] xs, y [::] ys).
+
+  End ziping_axioms.
+
   (* Hint Rewrite @reduce_monoid_homo_unit using (exact _) : futhark. *)
   (* Hint Rewrite @reduce_cons using (exact _) : futhark. *)
   Hint Rewrite @map_cons                using (exact _) : futhark.
@@ -63,6 +89,7 @@ Module Type FutharkSpec.
   Hint Rewrite @reduce_cons             using (exact _) : futhark.
   Hint Rewrite @scan_cons               using (exact _) : futhark.
   Hint Rewrite @scan_nil                using (exact _) : futhark.
+  Hint Rewrite @zip_cons                using (exact _) : futhark.
 
 End FutharkSpec.
 
@@ -74,9 +101,9 @@ Module FutharkMod (F : FutharkSpec).
   Hint Rewrite @munit_right      using (exact _) : futhark.
   Hint Rewrite <- @massoc         using (exact _) : futhark.
 
-  (* Hint Rewrite @nil_eq           using (exact _) : futhark. *)
   Hint Rewrite @app_nil          using (exact _) : futhark.
-  Hint Rewrite @cons_app_assoc_f using (exact _) : futhark.
+  Hint Rewrite @cons_app_assoc   using (exact _) : futhark.
+  (* Hint Rewrite @cons_app_assoc'  using (exact _) : futhark. *)
   Hint Rewrite @cons_convert     using (exact _) : futhark.
   Hint Rewrite @cons_convert_sig using (exact _) : futhark.
 
@@ -100,6 +127,19 @@ Module FutharkMod (F : FutharkSpec).
     Qed.
     Hint Resolve map_nil : futhark.
 
+    Lemma map_app {n1 n2 : nat}:
+      forall (xs1 : [|n1|]A) (xs2 : [|n2|]A),
+        map f (xs1 [++] xs2) = map f xs1 [++] map f xs2.
+    Proof.
+      intros xs1;
+        induction n1, xs1 as [ |? ? ? IH] using arr_ind;
+        intros;
+        fauto;
+        simpl;
+        rewrite <- IH;
+        fauto.
+    Qed.
+
     Lemma map_index:
       forall (i n : nat) (a : A) (xs : [|n|]A),
         Index i n a xs -> Index i n (f a) (map f xs).
@@ -117,6 +157,7 @@ Module FutharkMod (F : FutharkSpec).
   End map.
 
   Hint Resolve map_nil : futhark.
+  Hint Rewrite @map_app : futhark.
   Hint Resolve map_index : futhark.
   Hint Resolve map_prefix : futhark.
 
@@ -128,9 +169,10 @@ Module FutharkMod (F : FutharkSpec).
     forall (a1 : [|n1|]A) (a2 : [|n2|]A),
       reduce op ne (a1 [++] a2) = op (reduce op ne a1) (reduce op ne a2).
     Proof.
-      intros a1;
+      intros a1 a2;
         induction n1, a1 as [ | n1 a a1 IH] using arr_ind;
-        intros;
+        fauto;
+        simpl;
         fauto;
         rewrite IH;
         rewrite <- massoc;
