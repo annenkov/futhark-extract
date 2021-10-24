@@ -4,16 +4,16 @@ From Coq Require Import Logic.Eqdep_dec.
 From Coq Require Import ZArith.
 
 Class IsMonoid (M : Type) (op : M -> M -> M) (e : M) : Prop :=
-  { munit_left : forall m, (op e m) = m;
+  { munit_left  : forall m, (op e m) = m;
     munit_right : forall m, (op m e) = m;
-    massoc : forall m1 m2 m3, op m1 (op m2 m3) = op (op m1 m2) m3
+    massoc      : forall m1 m2 m3, op m1 (op m2 m3) = op (op m1 m2) m3
   }.
 
 #[refine]
 Instance nat_sum_monoid : IsMonoid nat (fun x y => x + y) 0 :=
   {| munit_left  := _;
-      munit_right := _;
-      massoc      := _
+     munit_right := _;
+     massoc      := _
   |}.
 all: lia.
 Qed.
@@ -21,8 +21,8 @@ Qed.
 #[refine]
 Instance nat_mul_monoid : IsMonoid nat (fun x y => x * y) 1 :=
   {| munit_left  := _;
-      munit_right := _;
-      massoc      := _
+     munit_right := _;
+     massoc      := _
   |}.
 all: lia.
 Qed.
@@ -32,8 +32,8 @@ Open Scope Z.
 #[refine]
 Instance Z_sum_monoid : IsMonoid Z (fun x y => x + y) 0 :=
   {| munit_left  := _;
-      munit_right := _;
-      massoc      := _
+     munit_right := _;
+     massoc      := _
   |}.
 all: lia.
 Qed.

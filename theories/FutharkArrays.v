@@ -119,7 +119,7 @@ Section induction.
 
   Variable P : forall {n : nat} (arr : [|n|]A), Prop.
   Hypothesis base_case : P nil_arr.
-  Hypothesis ind_case  : forall (n : nat) (a : A) (arr : [|n|]A), P arr -> P (a [::] arr).
+  Hypothesis ind_step  : forall (n : nat) (a : A) (arr : [|n|]A), P arr -> P (a [::] arr).
 
   Lemma arr_ind:
     forall (n : nat) (arr : [|n|]A), P arr.
@@ -128,7 +128,7 @@ Section induction.
     * intros arr; assert (arr = nil_arr) by apply nil_eq; subst; apply base_case.
     * destruct arr as [[ | h t ] ?].
       + discriminate.
-      + rewrite cons_convert; apply ind_case; apply IH.
+      + rewrite cons_convert; apply ind_step; apply IH.
   Qed.
 
 End induction.
@@ -180,7 +180,7 @@ Section indeuction_S.
 
   Variable P : forall {n : nat} (arr : [|S n|]A), Prop.
   Hypothesis base_case : forall (a : A), P (a [::] nil_arr).
-  Hypothesis ind_case  : forall (a : A) (n : nat) (arr : [|S n|]A), P arr -> P (a [::] arr).
+  Hypothesis ind_step  : forall (a : A) (n : nat) (arr : [|S n|]A), P arr -> P (a [::] arr).
 
   Lemma arr_ind_S:
     forall (n : nat) (arr : [|S n|]A), P arr.
@@ -191,7 +191,7 @@ Section indeuction_S.
       induction n, t using arr_ind;
       intros.
     + apply base_case.
-    + apply ind_case; auto.
+    + apply ind_step; auto.
   Qed.
 
 End indeuction_S.
@@ -248,7 +248,8 @@ Section indexing.
 
   Inductive Index : forall {n : nat} (i : nat) (a : A) (xs : [|n|]A), Prop :=
   | IndexHead : forall {k : nat} (a : A) (t : [|k|]A), Index 0 a (a [::] t)
-  | IndexTail : forall {k : nat} (i : nat) (a h : A) (t : [|k|]A), Index i a t -> Index (S i) a (h [::] t).
+  | IndexTail : forall {k : nat} (i : nat) (a h : A) (t : [|k|]A),
+      Index i a t -> Index (S i) a (h [::] t).
 
   Inductive Prefix : forall {l n : nat} (p : [|l|]A) (xs : [|n|]A), Prop :=
   | PrefixEmpty : forall {k : nat} (xs : [|k|]A), Prefix nil_arr xs
@@ -349,19 +350,11 @@ Section indexing.
     forall (i n : nat) (x : A) (xs : [|n|]A) (pf : i < n),
       Index i x xs -> safe_index i pf xs = x.
   Proof.
-    intros i n x xs;
-      generalize dependent x;
-      generalize dependent i;
-      induction n, xs using arr_ind;
-      intros [ | i ] x pf cond;
-      inversion cond;
-      simplify_arrays;
-      subst.
-    * reflexivity.
-    * pose proof (safe_index_head i n a xs pf) as [pf' HH];
-        rewrite HH;
-        apply IHxs;
-        assumption.
+    induction 1 as [ | n i x h t HInd IH ].
+    + reflexivity.
+    + pose proof (safe_index_head i n h t pf) as [pf' Hsafe];
+      rewrite Hsafe;
+      apply IH.
   Qed.
 
 End indexing.

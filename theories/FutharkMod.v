@@ -13,7 +13,7 @@ Module Type FutharkSpec.
   Global Create HintDb futhark.
 
   Parameter map:
-    forall {A B : Type} {n : nat} (f : A -> B) (xs : [|n|]A), [|n|]B.
+    forall {A B : Type} `{Dec A} `{Dec B} {n : nat} (f : A -> B) (xs : [|n|]A), [|n|]B.
 
   Parameter reduce:
     forall {A : Type} `{Dec A} (op : A -> A -> A) (ne : A) `{IsMonoid A op ne}
@@ -33,7 +33,7 @@ Module Type FutharkSpec.
 
   Section map_axioms.
 
-    Context {A B : Type} {n : nat} (f : A -> B).
+    Context {A B : Type} `{Dec A} `{Dec B} {n : nat} (f : A -> B).
 
     Axiom map_cons:
       forall (x : A) (xs : [|n|]A), map f (x [::] xs) = f x [::] (map f xs).
@@ -48,7 +48,8 @@ Module Type FutharkSpec.
       forall l : [|0|]A, reduce op ne l = ne.
 
     Axiom reduce_cons:
-      forall (n : nat) (a : A) (l : [|n|]A), reduce op ne (a [::] l) = op a (reduce op ne l).
+      forall (n : nat) (a : A) (l : [|n|]A),
+        reduce op ne (a [::] l) = op a (reduce op ne l).
 
   End reduce_axioms.
 
@@ -57,7 +58,8 @@ Module Type FutharkSpec.
     Context {A : Type} `{Dec A} (op : A -> A -> A) (ne : A) `{IsMonoid A op ne}.
 
     Axiom scan_cons:
-      forall (n : nat) (h : A) (t : [|n|]A), scan op ne (h [::] t) = h [::] map (op h) (scan op ne t).
+      forall (n : nat) (h : A) (t : [|n|]A),
+        scan op ne (h [::] t) = h [::] map (op h) (scan op ne t).
 
     Axiom scan_nil:
       forall l : [|0|]A, scan op ne l = nil_arr.
@@ -103,7 +105,6 @@ Module FutharkMod (F : FutharkSpec).
 
   Hint Rewrite @app_nil          using (exact _) : futhark.
   Hint Rewrite @cons_app_assoc   using (exact _) : futhark.
-  (* Hint Rewrite @cons_app_assoc'  using (exact _) : futhark. *)
   Hint Rewrite @cons_convert     using (exact _) : futhark.
   Hint Rewrite @cons_convert_sig using (exact _) : futhark.
 
@@ -136,6 +137,8 @@ Module FutharkMod (F : FutharkSpec).
         induction n1, xs1 as [ |? ? ? IH] using arr_ind;
         intros;
         fauto;
+        (* We need [simpl] to replace [(S n1) + n2] with [S (n1 + n2)] in order
+           to be able to apply [cons_app_assoc] (via [fauto]). *)
         simpl;
         rewrite <- IH;
         fauto.
@@ -173,6 +176,8 @@ Module FutharkMod (F : FutharkSpec).
       intros a1 a2;
         induction n1, a1 as [ | n1 a a1 IH] using arr_ind;
         fauto;
+        (* We need [simpl] to replace [(S n1) + n2] with [S (n1 + n2)] in order
+           to be able to apply [cons_app_assoc] (via [fauto]). *)
         simpl;
         fauto;
         rewrite IH;
