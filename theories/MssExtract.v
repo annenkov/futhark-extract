@@ -67,7 +67,6 @@ Definition TT :=
 
   (* lists *)
   ; remap <%% list %%> "[]"
-  ; remap <%% @List.length %%> "length"
 
    (* subset types *)
   ; remap <%% sig %%> "sig_"
@@ -80,8 +79,6 @@ Definition TT_ctors :=
   ; ("true", "true")
   ; ("false", "false")].
 
-Definition mss_prelude := StringExtra.lines [sig_defs; i64_ops].
-
 Module Unsized.
 
   Import FutharkUnsized.
@@ -89,9 +86,12 @@ Module Unsized.
 
   Import FutharkImpl.
 
+  Definition mss_prelude := StringExtra.lines [sig_defs; i64_ops].
+
   Definition TT_extra :=
     [ remap <%% @reduce %%> "reduce"
     ; remap <%% @map %%> "map"
+    ; remap <%% @List.length %%> "length"
     ].
 
   Definition test_input := [1; -2; 3; 4; -1; 5; -6; 1].
@@ -121,26 +121,48 @@ Module Sized.
 
   Import FutharkImpl.
 
-  Definition TT_extra :=
-    [ remap <%% @reduce %%> "reduce"
-    ; remap <%% @map %%> "map"
+  Definition mss_prelude :=
+    StringExtra.lines
+      [ sig_defs
+      ; i64_ops
+      ; prelude_futhark
+      ].
+
+  (* TODO It would be nice to have this is the [FutharkMod] Functor definition,
+          but then something goes wrong with namespaces. *)
+  Definition TT_futhark :=
+    [ remap <%% @map %%>         "map_wrapper"
+    ; remap <%% @reduce %%>      "reduce_wrapper"
+    ; remap <%% @scan %%>        "scan_wrapper"
+    ; remap <%% @zip %%>         "zip_wrapper"
+    ; remap <%% @unzip %%>       "unzip_wrapper"
+    ; remap <%% @List.length %%> "length_wrapper"
+    ; remap <%% @to_arr %%>      "id"
     ].
 
-  Definition test_input := to_arr [1; -2; 3; 4; -1; 5; -6; 1] eq_refl.
+  Definition TT_extra :=
+    TT_futhark ++
+    [ remap <%% @andb %%>   "andb"
+    ; remap <%% @orb %%>    "orb"
+    ].
+
+  Definition test_input := [1; -2; 3; 4; -1; 5; -6; 1].
   Definition test_output := 11.
 
-  (* Example mss_test : mss test_input = test_output. *)
+  Example mss_test : mss_wrapper test_input = test_output.
+  unfold test_input; unfold mss_wrapper; unfold mss; unfold mss_core;
+    repeat (unfold to_arr; simpl; rewrite cons_convert); fauto. Qed.
 
   Definition futhark_mss_test :=
     {| FTname := "Maximum segment sum test"
-     ; FTinput := string_of_list (fun n => string_of_Z n ++ "i64")%string (proj1_sig test_input)
+     ; FTinput := string_of_list (fun n => string_of_Z n ++ "i64")%string test_input
      ; FToutput := string_of_Z test_output ++ "i64" |}.
 
   MetaCoq Run (extract_and_print "mss_futhark"
                                   mss_prelude
                                   (TT ++ TT_extra) TT_ctors
                                   (Some futhark_mss_test)
-                                  mss).
+                                  mss_wrapper).
 
 End Sized.
 

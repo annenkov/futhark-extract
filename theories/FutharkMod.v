@@ -1,4 +1,7 @@
 From Coq Require Import List.
+From Coq Require Import String.
+
+From ConCert.Extraction Require Import Common.
 
 Import ListNotations.
 
@@ -93,6 +96,18 @@ End FutharkSpec.
 Module FutharkMod (F : FutharkSpec).
 
   Include F.
+
+  Open Scope string.
+  Definition prelude_futhark :=
+    fold_right (fun x y => x ++ (String (Ascii.ascii_of_nat 10) "") ++ y) ""
+      [ "let length_wrapper 'a (as: []a) = i64.i32 (length as)"
+      ; "let map_wrapper    [n] 'a 'x (m: i64) (f: a -> x) (as: [n]a) : *[n]x        = map f as"
+      ; "let reduce_wrapper [n] 'a    (op: a -> a -> a) (ne: a) (m: i64) (as: [n]a) : a     = reduce op ne as"
+      ; "let scan_wrapper   [n] 'a    (op: a -> a -> a) (ne: a) (m: i64) (as: [n]a) : *[n]a = scan op ne as"
+      ; "let zip_wrapper    [n] 'a 'b (m: i64) (as: [n]a) (bs: [n]b)  : [n](a, b)    = zip as bs"
+      ; "let unzip_wrapper  [n] 'a 'b (m: i64) (xs: [n](a, b))        : ([n]a, [n]b) = unzip xs"
+      ].
+  Close Scope string.
 
   Hint Rewrite @munit_left       using (exact _) : futhark.
   Hint Rewrite @munit_right      using (exact _) : futhark.
