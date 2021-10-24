@@ -40,15 +40,17 @@ Qed.
 
 Close Scope Z.
 
-Class Dec (A : Type) : Type :=
-  { dec : forall x y : A, {x = y} + {x <> y} }.
+Class Dec (A : Type) : Prop :=
+  { dec : forall x y : A, x = y \/ x <> y }.
 
 #[refine]
 Instance Z_dec : Dec Z := { dec := _ }.
 repeat decide equality. Qed.
 
+#[refine]
 Instance from_dec {A : Type} (d : forall x y : A, {x = y} + {x <> y}) : Dec A :=
-  { dec := d }.
+  { dec := _ }.
+intros x y; specialize (d x y) as []; [left | right]; assumption. Qed.
 
 Instance bool_dec : Dec bool := from_dec Bool.bool_dec.
 Instance nat_dec  : Dec nat := from_dec Nat.eq_dec.
@@ -69,7 +71,7 @@ Class SigEq {A : Type} (P : A -> Prop) : Prop :=
 #[refine]
 Instance SigEq_dec {A B : Type} `{Dec B} {f g : A -> B} : SigEq (fun x => f x = g x) :=
   { subset_eq := _ }.
-intros [x px] [y py]; simpl; intros; subst; f_equal; apply (UIP_dec dec).
+intros [x px] [y py]; simpl; intros; subst; f_equal; apply (eq_proofs_unicity dec).
 Qed.
 
 #[refine]
@@ -78,8 +80,8 @@ Instance sig_dec {A : Type} {P : A -> Prop} `{Dec A} `{SigEq A P} : Dec (sig P) 
 intros [x px] [y py];
   specialize (dec x y) as [];
   subst.
-* apply left; apply subset_eq; simpl; reflexivity.
-* apply right; unfold not; inversion 1; auto.
+* left; apply subset_eq; simpl; reflexivity.
+* right; unfold not; inversion 1; auto.
 Qed.
 
 (** A result that helps in dealing with situations where heterogeneous equality
