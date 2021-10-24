@@ -13,7 +13,8 @@ Module Type FutharkSpec.
   Global Create HintDb futhark.
 
   Parameter map:
-    forall {A B : Type} `{Dec A} `{Dec B} {n : nat} (f : A -> B) (xs : [|n|]A), [|n|]B.
+    forall {A B : Type} `{Dec A} `{Dec B} {n : nat}
+      (f : A -> B) (xs : [|n|]A), [|n|]B.
 
   Parameter reduce:
     forall {A : Type} `{Dec A} (op : A -> A -> A) (ne : A) `{IsMonoid A op ne}
@@ -44,7 +45,7 @@ Module Type FutharkSpec.
 
     Context {A : Type} `{Dec A} (op : A -> A -> A) (ne : A) `{IsMonoid A op ne}.
 
-    Axiom reduce_monoid_homo_unit:
+    Axiom reduce_nil:
       forall l : [|0|]A, reduce op ne l = ne.
 
     Axiom reduce_cons:
@@ -60,9 +61,6 @@ Module Type FutharkSpec.
     Axiom scan_cons:
       forall (n : nat) (h : A) (t : [|n|]A),
         scan op ne (h [::] t) = h [::] map (op h) (scan op ne t).
-
-    Axiom scan_nil:
-      forall l : [|0|]A, scan op ne l = nil_arr.
 
   End scan_axioms.
 
@@ -84,14 +82,11 @@ Module Type FutharkSpec.
 
   End ziping_axioms.
 
-  (* Hint Rewrite @reduce_monoid_homo_unit using (exact _) : futhark. *)
-  (* Hint Rewrite @reduce_cons using (exact _) : futhark. *)
-  Hint Rewrite @map_cons                using (exact _) : futhark.
-  Hint Rewrite @reduce_monoid_homo_unit using (exact _) : futhark.
-  Hint Rewrite @reduce_cons             using (exact _) : futhark.
-  Hint Rewrite @scan_cons               using (exact _) : futhark.
-  Hint Rewrite @scan_nil                using (exact _) : futhark.
-  Hint Rewrite @zip_cons                using (exact _) : futhark.
+  Hint Rewrite @map_cons    using (exact _) : futhark.
+  Hint Rewrite @reduce_nil  using (exact _) : futhark.
+  Hint Rewrite @reduce_cons using (exact _) : futhark.
+  Hint Rewrite @scan_cons   using (exact _) : futhark.
+  Hint Rewrite @zip_cons    using (exact _) : futhark.
 
 End FutharkSpec.
 
@@ -169,7 +164,7 @@ Module FutharkMod (F : FutharkSpec).
 
     Context {A : Type} `{Dec A} (op : A -> A -> A) (ne : A) `{IsMonoid A op ne}.
 
-    Theorem reduce_monoid_homo_mult {n1 n2 : nat}:
+    Theorem reduce_app {n1 n2 : nat}:
     forall (a1 : [|n1|]A) (a2 : [|n2|]A),
       reduce op ne (a1 [++] a2) = op (reduce op ne a1) (reduce op ne a2).
     Proof.
@@ -189,6 +184,12 @@ Module FutharkMod (F : FutharkSpec).
       forall (a : A) (l : [|0|]A), reduce op ne (a [::] l) = a.
     Proof.
       intros; fauto.
+    Qed.
+
+    Lemma scan_nil:
+      forall l : [|0|]A, scan op ne l = nil_arr.
+    Proof.
+      intros; remember (scan op ne _) as xs; simplify_arrays; reflexivity.
     Qed.
 
     Theorem scan_index {i n : nat}:
@@ -212,8 +213,9 @@ Module FutharkMod (F : FutharkSpec).
 
   End monoid.
 
-  Hint Rewrite reduce_cons_nil         using (exact _) : futhark.
-  Hint Rewrite reduce_monoid_homo_mult using (exact _) : futhark.
+  Hint Rewrite reduce_cons_nil using (exact _) : futhark.
+  Hint Rewrite reduce_app      using (exact _) : futhark.
+  Hint Rewrite @scan_nil       using (exact _) : futhark.
 
   Hint Resolve scan_index : futhark.
   Hint Resolve scan_last  : futhark.

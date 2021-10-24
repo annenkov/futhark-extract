@@ -216,10 +216,8 @@ Next Obligation.
     split_X_cond_goal;
     lia.
 Qed.
-Check redOp.
 
 Definition X__unit : X := exist _ (Z0, Z0, Z0, Z0) eq_refl.
-Check X__unit.
 
 #[refine]
 Instance X__monoid : IsMonoid X redOp X__unit :=
@@ -236,7 +234,6 @@ all:
   split_tuple_eq_goal;
   lia.
 Qed.
-Check X__monoid.
 
 Program Definition mapOp (x : Z) : X :=
   ( max x 0
@@ -249,4 +246,3 @@ Next Obligation.
       repeat rewrite max_equiv;
       convert_ineqb_to_ineq; lia.
 Qed.
-Check mapOp.

@@ -11,7 +11,8 @@ Require Import FutharkMod.
 
 Module FutharkSpecImpl : FutharkSpec.
 
-  Program Definition map {A B : Type} {n : nat} (f : A -> B) (xs : [|n|]A) : [|n|]B :=
+  Program Definition map {A B : Type} `{Dec A} `{Dec B} {n : nat}
+          (f : A -> B) (xs : [|n|]A) : [|n|]B :=
     List.map f xs.
   Next Obligation.
     rewrite List.map_length; reflexivity.
@@ -80,7 +81,7 @@ Module FutharkSpecImpl : FutharkSpec.
 
     Context {A : Type} `{Dec A} (op : A -> A -> A) (ne : A) `{IsMonoid A op ne}.
 
-    Theorem reduce_monoid_homo_unit:
+    Theorem reduce_nil:
       forall (xs : [|0|]A), reduce op ne xs  = ne.
     Proof.
       intros [l len]; destruct l; unfold reduce; simpl; reflexivity + discriminate.
