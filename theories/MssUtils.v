@@ -217,7 +217,7 @@ Next Obligation.
     lia.
 Qed.
 
-Definition X__unit : X := exist _ (Z0, Z0, Z0, Z0) eq_refl.
+Definition X__unit : X := exist _ (0, 0, 0, 0) eq_refl.
 
 #[refine]
 Instance X__monoid : IsMonoid X redOp X__unit :=

@@ -81,59 +81,55 @@ Hint Rewrite @mss_cons_r : mss.
 
 Hint Resolve Z.add_0_r : mss.
 
-Lemma mss_core_left {n : nat}:
+Lemma mss_core_initial {n : nat}:
   forall l : [|n|]Z,
-    let '(_, x2, _, _) := proj1_sig (mss_core l) in
-    exists (n' : nat) (l' : [|n'|]Z), Prefix l' l /\ sum l' = x2.
+    let '(_, msil, _, _) := proj1_sig (mss_core l) in
+    exists (n' : nat) (l' : [|n'|]Z), Prefix l' l /\ sum l' = msil.
 Proof.
-  intros l; induction n, l using arr_ind; mauto; simpl.
+  intros l; induction n, l as [ |n h t IH] using arr_ind; mauto; simpl.
   * exists 0%nat. exists nil_arr; split; mauto.
-  * destruct_mss_core l;
+  * destruct_mss_core t;
     (* We split up into tree case and solve these separately *)
     match goal with
-    | |- context[max (max ?head 0) (?head + ?x4)]
+    | |- context[max (max ?h 0) (?h + ?mis')]
       => (* First we assert that we are in one of these cases *)
-        remember (max (max head 0) (head + x4)) as M eqn:EqM;
-        assert (M_CASES : M = 0 \/ M = head \/ M = head + x4) by (max_equiv_tac; lia);
-        clear EqM;
+        remember (max (max h 0) (h + mis')) as MIS eqn:EqMIS;
+        assert (MIS_CASES : MIS = 0 \/ MIS = h \/ MIS = h + mis') by (max_equiv_tac; lia);
+        clear EqMIS;
         (* Them we split up into these cases *)
-        destruct_ors M_CASES;
+        destruct_ors MIS_CASES;
         subst
     end.
     + (* CASE M = 0 *)
       exists 0%nat; exists nil_arr; split; mauto.
     + (* CASE M = a *)
-      exists 1%nat; exists (a [::] nil_arr); split; mauto; simpl; mauto.
+      exists 1%nat; exists (h [::] nil_arr); split; mauto; simpl; mauto.
     + (* CASE M = a + e3 *)
-      specialize IHl as [n1 [l1 [Happend Hsum]]];
-        subst; exists (S n1); exists (a [::] l1); split; mauto.
+      specialize IH as [n1 [l1 [Happend Hsum]]];
+        subst; exists (S n1); exists (h [::] l1); split; mauto.
 Qed.
 
 Lemma mss_core_inner {n : nat}:
   forall l : [|n|]Z,
-    let '(x1, _, _, _) := proj1_sig (mss_core l) in
-    exists (n' : nat) (l' : [|n'|]Z), Segment l' l /\ sum l' = x1.
+    let '(mssl, _, _, _) := proj1_sig (mss_core l) in
+    exists (n' : nat) (l' : [|n'|]Z), Segment l' l /\ sum l' = mssl.
 Proof.
-  intros l;
-    induction n, l as [ |n h l IH] using arr_ind;
-    mauto;
-    destruct_mss_cores;
-    simpl.
+  intros l; induction n, l as [ |n h t IH] using arr_ind; mauto; simpl.
   * exists 0%nat; exists nil_arr; split; mauto.
-  * specialize (mss_core_left l) as Hleft;
-    destruct_mss_core l;
+  * specialize (mss_core_initial t) as Hleft;
+    destruct_mss_core t;
     specialize IH as [n' [l' [Hsegment Hsum]]];
-    rewrite max_add_right;
-    simpl;
+    simpl.
     (* We split up into tree case and solve these separately *)
     match goal with
-    | |- context[max (max ?head 0) (max ?x1 (max (?head + ?x4) ?x4))]
+    | |- context[max (max h 0) (max ?mss' (max h 0 + ?mis'))]
       => (* First we assert that we are in one of these cases *)
-        remember (max (max head 0) (max x1 (max (head + x4) x4))) as M eqn:EqM;
-        assert (M_CASES : M = x1 \/ M = head \/ M = head + x4) by (max_equiv_tac; lia);
-        clear EqM;
+        remember (max (max h 0) (max mss' (max h 0 + mis'))) as MSS eqn:EqMSS;
+        assert (MSS_CASES : MSS = mss' \/ MSS = h \/ MSS = h + mis')
+          by (rewrite max_add_right in EqMSS; max_equiv_tac; lia);
+        clear EqMSS;
         (* Them we split up into these cases *)
-        destruct_ors M_CASES;
+        destruct_ors MSS_CASES;
         subst
     end.
     + (* CASE M = x1 *)
@@ -151,7 +147,7 @@ Theorem mss_bound {n1 n2 : nat}:
 Proof.
   intros l1 l2 HSeg;
     induction HSeg as [n1 n2 l1 l2 HPre| ].
-  * assert (lem :  let '(x1, x2, x3, x4) := proj1_sig (mss_core l2) in sum l1 <= x2). {
+  * assert (lem :  let '(_, msil, _, _) := proj1_sig (mss_core l2) in sum l1 <= msil). {
       induction HPre; mauto; solve_for_mss_cores.
     }
     unfold mss;
@@ -161,9 +157,8 @@ Qed.
 Hint Resolve mss_bound : mss.
 
 Theorem mss_attain:
-  forall (n2 : nat) (l2 : [|n2|]Z),
-  exists (n1 : nat) (l1 : [|n1|]Z) (pf : Segment l1 l2),
-    sum l1 = mss l2.
+  forall (n2 : nat) (l2 : [|n2|]Z), exists (n1 : nat) (l1 : [|n1|]Z),
+    Segment l1 l2 /\ sum l1 = mss l2.
 Proof.
   intros n2 l2;
   pose proof (mss_core_inner l2) as H;
@@ -171,6 +166,7 @@ Proof.
   destruct_mss_core l2;
   specialize H as [n1 [l1 [HSeg Hsum]]];
   subst;
-  exists n1; exists l1; exists HSeg;
-  reflexivity.
+  exists n1; exists l1;
+  split;
+  [apply HSeg | reflexivity].
 Qed.
