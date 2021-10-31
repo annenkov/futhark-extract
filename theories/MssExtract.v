@@ -67,6 +67,7 @@ Definition TT :=
 
   (* lists *)
   ; remap <%% list %%> "[]"
+  ; remap <%% @List.length %%> "length"
 
    (* subset types *)
   ; remap <%% sig %%> "sig_"
@@ -91,7 +92,6 @@ Module Unsized.
   Definition TT_extra :=
     [ remap <%% @reduce %%> "reduce"
     ; remap <%% @map %%> "map"
-    ; remap <%% @List.length %%> "length"
     ].
 
   Definition test_input := [1; -2; 3; 4; -1; 5; -6; 1].
@@ -136,7 +136,6 @@ Module Sized.
     ; remap <%% @scan %%>        "scan_wrapper"
     ; remap <%% @zip %%>         "zip_wrapper"
     ; remap <%% @unzip %%>       "unzip_wrapper"
-    ; remap <%% @List.length %%> "length_wrapper"
     ; remap <%% @to_arr %%>      "id"
     ].
 
@@ -169,5 +168,5 @@ End Sized.
 Redirect "./extracted/auto-generated/mss_unsized.fut"
          MetaCoq Run (tmMsg Unsized.mss_futhark).
 
-Redirect "./extracted/auto-generated/mss_sized.fut"
+Redirect "./extracted/auto-generated/mss.fut"
          MetaCoq Run (tmMsg Sized.mss_futhark).

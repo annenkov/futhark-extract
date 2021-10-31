@@ -100,8 +100,7 @@ Module FutharkMod (F : FutharkSpec).
   Open Scope string.
   Definition prelude_futhark :=
     fold_right (fun x y => x ++ (String (Ascii.ascii_of_nat 10) "") ++ y) ""
-      [ "let length_wrapper 'a (as: []a) = i64.i32 (length as)"
-      ; "let map_wrapper    [n] 'a 'x (m: i64) (f: a -> x) (as: [n]a) : *[n]x        = map f as"
+      [ "let map_wrapper    [n] 'a 'x (m: i64) (f: a -> x) (as: [n]a) : *[n]x        = map f as"
       ; "let reduce_wrapper [n] 'a    (op: a -> a -> a) (ne: a) (m: i64) (as: [n]a) : a     = reduce op ne as"
       ; "let scan_wrapper   [n] 'a    (op: a -> a -> a) (ne: a) (m: i64) (as: [n]a) : *[n]a = scan op ne as"
       ; "let zip_wrapper    [n] 'a 'b (m: i64) (as: [n]a) (bs: [n]b)  : [n](a, b)    = zip as bs"

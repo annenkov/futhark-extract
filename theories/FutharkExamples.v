@@ -74,7 +74,7 @@ Definition TT :=
   ; remap <%% bool %%> "bool"
     (* lists *)
   ; remap <%% list %%> "[]"
-  ; remap <%% @List.length %%> "(\xs -> i64.i32 (length xs))"
+  ; remap <%% @List.length %%> "length"
   ; remap <%% List.fold_right %%> "reduce"
 
 

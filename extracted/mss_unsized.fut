@@ -14,12 +14,6 @@ let ltI64 (i : i64) (j : i64) = i < j
 let geI64 (i : i64) (j : i64) = i >= j
 let gtI64 (i : i64) (j : i64) = i > j
 let eqI64 (i : i64) (j : i64) = i == j
-let map_wrapper    [n] 'a 'x (m: i64) (f: a -> x) (as: [n]a) : *[n]x        = map f as
-let reduce_wrapper [n] 'a    (op: a -> a -> a) (ne: a) (m: i64) (as: [n]a) : a     = reduce op ne as
-let scan_wrapper   [n] 'a    (op: a -> a -> a) (ne: a) (m: i64) (as: [n]a) : *[n]a = scan op ne as
-let zip_wrapper    [n] 'a 'b (m: i64) (as: [n]a) (bs: [n]b)  : [n](a, b)    = zip as bs
-let unzip_wrapper  [n] 'a 'b (m: i64) (xs: [n](a, b))        : ([n]a, [n]b) = unzip xs
-
 
 type x = sig_ (((i64,i64),i64),i64)
 
@@ -39,13 +33,11 @@ let X__unit  =  ( ( (0i64, 0i64), 0i64), 0i64)
 
 let mapOp (x : i64) =  ( ( ((max x 0i64), (max x 0i64)), (max x 0i64)), x)
 
-let mss_core (n : i64) (xs : sig_ ([] i64)) = reduce_wrapper redOp X__unit n (map_wrapper n mapOp xs)
+let mss_core (xs : [] i64) = reduce redOp X__unit (map mapOp xs)
 
-let mss (n : i64) (xs : sig_ ([] i64)) = match id (mss_core n xs)
+let mss (xs : [] i64) = match id (mss_core xs)
 case (p, z) -> (match p
 case (p0, z0) -> (match p0
 case (x, z1) -> x))
 
-let mss_wrapper (xs : [] i64) = mss (length xs) (id xs)
-
-let main = mss_wrapper
+let main = mss
