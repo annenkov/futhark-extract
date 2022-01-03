@@ -61,7 +61,7 @@ Definition print_test (ft : FutharkTest) : string :=
   ++ nl
   ++ "-- =="
   ++ nl
-  ++ "--" ++ "input { " ++ ft.(FTinput) ++ " }"
+  ++ "-- " ++ "input { " ++ ft.(FTinput) ++ " }"
   ++ nl
   ++ "-- " ++ "output { " ++ ft.(FToutput) ++ " }"
   ++ nl ++ nl.

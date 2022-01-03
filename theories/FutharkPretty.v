@@ -303,9 +303,12 @@ Section print_term.
         ++ print_term (ctx ++ ctx' ++ ctx)%list true false (lam_body fdef.(dbody)).
 
   Definition print_pat (prefix : string) (TT : env string) (ctor : string) (pt : list string * string) :=
-    let ctor_nm := from_option (look TT ctor) ("#"++ prefix ++ ctor) in
-    let print_parens := (Nat.ltb 1 (List.length pt.1)) in
-    "case " ++ parens (Nat.leb 1 (List.length pt.1)) ctor_nm ++ " " ++ concat " " (rev pt.1) ++ " -> " ++ pt.2.
+    match ctor with
+    | "Pair" => "case " ++ "(" ++ concat ", " (rev pt.1) ++ ") -> " ++ pt.2
+    | _ => let ctor_nm := from_option (look TT ctor) ("#"++ prefix ++ ctor) in
+          let print_parens := (Nat.ltb 1 (List.length pt.1)) in
+          "case " ++ parens (Nat.leb 1 (List.length pt.1)) ctor_nm ++ " " ++ concat " " (rev pt.1) ++ " -> " ++ pt.2
+    end.
 
 
   Definition print_transfer (args : list string) :=
@@ -661,6 +664,8 @@ Definition i32_ops :=
   "let divI32 (i : i32) (j : i32) = i / j" ;
   "let leI32 (i : i32) (j : i32) = i <= j" ;
   "let ltI32 (i : i32) (j : i32) = i < j" ;
+  "let geI32 (i : i32) (j : i32) = i >= j" ;
+  "let gtI32 (i : i32) (j : i32) = i > j" ;
   "let eqI32 (i : i32) (j : i32) = i == j"
   $>.
 
@@ -672,6 +677,8 @@ Definition i64_ops :=
   "let divI64 (i : i64) (j : i64) = i / j" ;
   "let leI64 (i : i64) (j : i64) = i <= j" ;
   "let ltI64 (i : i64) (j : i64) = i < j" ;
+  "let geI64 (i : i64) (j : i64) = i >= j" ;
+  "let gtI64 (i : i64) (j : i64) = i > j" ;
   "let eqI64 (i : i64) (j : i64) = i == j"
   $>.
 
@@ -683,7 +690,9 @@ Definition u32_ops :=
   "let multU32 (i : u32) (j : u32) = i * j" ;
   "let eqU32 (a : u32 ) (b : u32 ) = a == b" ;
   "let lebU32 (a : u32 ) (b : u32 ) = a <= b" ;
-  "let ltbU32 (a : u32 ) (b : u32 ) = a < b"
+  "let ltbU32 (a : u32 ) (b : u32 ) = a < b" ;
+  "let gebU32 (a : u32 ) (b : u32 ) = a >= b" ;
+  "let gtbU32 (a : u32 ) (b : u32 ) = a > b"
   $>.
 
 Definition f64_ops :=
@@ -694,7 +703,9 @@ Definition f64_ops :=
   "let divF64 (i : f64) (j : f64) = i / j" ;
   "let eqF64 (a : f64 ) (b : f64 ) = a == b" ;
   "let lebF64 (a : f64 ) (b : f64 ) = a <= b" ;
-  "let ltbF64 (a : f64 ) (b : f64 ) = a < b"
+  "let ltbF64 (a : f64 ) (b : f64 ) = a < b" ;
+  "let gebF64 (a : f64 ) (b : f64 ) = a >= b" ;
+  "let gtbF64 (a : f64 ) (b : f64 ) = a > b"
   $>.
 
 

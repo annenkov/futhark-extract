@@ -115,6 +115,27 @@ Module PatternMatching.
 End PatternMatching.
 
 
+Module TupleMatch.
+  (** Example of how deconstructing tuples with match or let
+      expressions work. *)
+
+  Definition tmatch (x : Z * Z * Z * Z) :=
+    match x with
+    | (y, _, _, _) => y
+    end.
+
+  Definition tlet (x : Z * Z * Z * Z) :=
+    let '(y, _, _, _) := x in y.
+
+  Definition twiceFirst (x : Z * Z * Z * Z) := (tmatch x, tlet x).
+
+  MetaCoq Run (extract_and_print "tuple_match_futhark" "" TT []
+                                  None
+                                  twiceFirst).
+
+End TupleMatch.
+
+
 Module Sum.
 
   (** A simple example of reduction *)
@@ -430,6 +451,9 @@ End Indexing.
 
 Redirect "./extracted/auto-generated/pattern_matching.fut"
          MetaCoq Run (tmMsg PatternMatching.add_dec_futhark).
+
+Redirect "./extracted/auto-generated/tuple_match.fut"
+         MetaCoq Run (tmMsg TupleMatch.tuple_match_futhark).
 
 Redirect "./extracted/auto-generated/average.fut"
          MetaCoq Run (tmMsg Average.average_futhark).
